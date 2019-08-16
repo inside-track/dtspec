@@ -1,0 +1,257 @@
+---
+
+# Factories will represent a collection of test data.
+# Scenarios are a colletion of test cases that concern some shared topic.
+#   - The code being tested is expected to run only 1 time for a scenario.
+#   - One run could be associated with multiple scenarios, up to user to decide
+# Cases will contain assertions about the results of a run
+#  - they can also contain additional conditions about data defined in a scenario
+
+identifiers:
+  - name: student
+    attributes:
+      - id:
+          type: integer
+          generator: unique
+      - uuid:
+          type: string
+          generator: uuid
+      - external_id:
+          type: string
+          generator: unique
+      - console_id:
+          type: integer
+          generator: unique
+
+  - name: organization
+    attributes:
+      - id:
+          type: integer
+          generator: unique
+      - uuid:
+          type: string
+          generator: uuid
+
+  - name: pipeline
+    attributes:
+      - id:
+          type: integer
+          generator: unique
+      - uuid:
+          type: string
+          generator: uuid
+
+  - name: generic
+    attributes:
+      - id:
+          type: integer
+          generator: unique
+      - uuid:
+          type: string
+          generator: uuid
+
+
+
+factories:
+  - name: CanonicalStudent # Factory names must be unique accross all Factories
+    description: Simple easy student
+
+    sources:
+      - name: itk_api.students
+        # Use data for specifying individual records of data
+        # Schemas will be used to parse these tables to build the actual data and fill out unspecified fields
+
+        # Using {student[1].id} means to generate an id using the 'id' attribute of the 'student' identifier
+        #  This identifier is named '1', but a new id will actually be generated for every case
+        data: |
+          | id               | uuid              | organization_id      | first_name |
+          | -                | -                 | -                    | -          |
+          | {student[1].id}  | {student[1].uuid} | {organization[1].id} | George     |
+        # Use values to specify constants that apply across all rows of the data
+        values:
+          last_name: LogradoTest
+
+
+      - name: itk_api.organizations
+        data: |
+          | id                   | uuid                 |
+          | -                    | -                    |
+          | {organization[1].id} | {organization[1].id} |
+
+      - name: itk_api.profiles
+        data: |
+          | id                     | student_id      |
+          | -                      | -               |
+          | {generic[profiles].id} | {student[1].id} |
+
+  - name: StudentWithPipelines
+    from:
+      - CanonicalStudent
+
+    sources:
+      - name: itk_api.pipelines
+        data: |
+          | id               | uuid               | student_id      |
+          | -                | -                  | -               |
+          | {pipeline[1].id} | {pipeline[1].uuid} | {student[1].id} |
+          | {pipeline[2].id} | {pipeline[2].uuid} | {student[1].id} |
+
+
+# Statics are data that doesn't stack for every test case
+# not clear if this is really needed
+statics:
+  - name: analytics.dimdate
+    data: |
+      | date       |
+      | -          |
+      | 2019-01-01 |
+      | 2019-01-02 |
+      | 2019-01-03 |
+      | 2019-01-04 |
+
+
+scenarios:
+  - name: SCStudents
+    descriptions: Building the SC student table
+
+    # Factories that get applied for each case in this scenario
+    factories:
+      - CanonicalStudent
+
+    # retyping the collectors is kinda annoying.... what if they were declared up here
+    targets:
+      - name: wh.sc_students
+        collector:
+          field: student_uuid
+          identifier: student
+          attribute: uuid
+
+    cases:
+      - name: It has data
+        description: This is the simplest test case for these transformations
+        factories: # Factories act as "givens"
+          - AnotherOne # I could append case-specific factories to the scenario-wide ones
+
+        expected:
+          # Can specify multiple target expectations
+          - target: wh.sc_students
+            data: |
+              | student_uuid      | organization_uuid      |
+              | -                 | -                      |
+              | {student[1].uuid} | {organization[1].uuid} |
+            collector:
+              field: student_uuid
+              identifier: student
+              attribute: uuid
+
+
+      - name: Full name is a concatenation of first/last name
+        factories: # Factories act as "givens"
+          # Can also add unnamed factories specific to this case
+          - data: |
+            | id               | uuid              | organization_id      | first_name | last_name |
+            | -                | -                 | -                    | -          | -         |
+            | {student[1].id}  | {student[1].uuid} | {organization[1].id} | Buffy      | Summers   |
+
+        expected:
+          - target: wh.sc_students
+            data: |
+              | student_uuid      | full_name     |
+              | -                 | -             |
+              | {student[1].uuid} | Buffy Summers |
+            by:
+              - student_uuid
+            collector:
+              field: student_uuid
+              identifier: student
+              attribute: uuid
+
+  # New scenario for a new set of background data
+  #  maybe this is a separate run altogether, up to user to decide
+  - name: PSCStudents
+    description: Building the PSC student table
+
+    factories:
+      - StudentWithPipelines
+
+      targets:
+        - name: wh.psc_students
+          collector:
+            field: student_uuid
+            identifier: student
+            attribute: uuid
+
+      cases:
+        - name: It has data # same name as a case in a different scenario is ok
+          expected:
+            - target: wh.psc_students
+              data: |
+                | student_uuid      | pipeline_uuid      |
+                | -                 | -                  |
+                | {student[1].uuid} | {pipeline[1].uuid} |
+                | {student[1].uuid} | {pipeline[2].uuid} |
+              by:
+                - student_uuid
+                - pipeline_uuid
+
+
+
+
+
+
+
+
+
+schemas:
+  - name: itk_api.students
+    fields:
+      - name: id
+        type: integer
+        unique: True
+        not_null: True
+
+      - name: uuid
+        type: string
+        generator: uuid
+        length: 32 # optional, only needed for very short varchars
+        unique: True
+        not_null: True
+        foreign_keys: # do I need these?
+          - source: itk_distribution.users
+            field: uuid
+          - source: itk_messaging.students
+            field: uuid
+
+      - name: organization_id
+        type: integer
+        not_null: True
+        foreign_keys:
+          - source: itk_api.organizations
+            field: id
+
+  - name: itk_api.organizations
+    fields:
+      - name: id
+        type: integer
+        unique: True
+        not_null: True
+
+      - name: uuid
+        type: string
+        generator: uuid
+
+  - name: itk_api.profiles
+    fields:
+      - name: id
+        type: integer
+        unique: True
+
+      - name: student_id
+        type: integer
+        foreign_keys:
+          - source: itk_api.students
+            field: id
+
+      - name: values
+        type: string
+        generator: json
