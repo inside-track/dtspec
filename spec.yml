@@ -11,43 +11,33 @@ identifiers:
   - name: student
     attributes:
       - id:
-          type: integer
-          generator: unique
+          generator: unique_integer
       - uuid:
-          type: string
           generator: uuid
       - external_id:
-          type: string
-          generator: unique
+          generator: unique_string
       - console_id:
-          type: integer
-          generator: unique
+          generator: unique_integer
 
   - name: organization
     attributes:
       - id:
-          type: integer
-          generator: unique
+          generator: unique_integer
       - uuid:
-          type: string
           generator: uuid
 
   - name: pipeline
     attributes:
       - id:
-          type: integer
-          generator: unique
+          generator: unique_integer
       - uuid:
-          type: string
           generator: uuid
 
   - name: generic
     attributes:
       - id:
-          type: integer
-          generator: unique
+          generator: unique_integer
       - uuid:
-          type: string
           generator: uuid
 
 
