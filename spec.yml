@@ -1,4 +1,5 @@
 ---
+version: 0.0.0
 
 # Factories will represent a collection of test data.
 # Scenarios are a colletion of test cases that concern some shared topic.
@@ -7,6 +8,7 @@
 # Cases will contain assertions about the results of a run
 #  - they can also contain additional conditions about data defined in a scenario
 
+# Identifiers are shared across all scenarios
 identifiers:
   - name: student
     attributes:
@@ -43,6 +45,7 @@ identifiers:
 
 
 factories:
+  # name or singular factory?
   - name: CanonicalStudent # Factory names must be unique accross all Factories
     description: Simple easy student
 
@@ -58,8 +61,37 @@ factories:
           | -                | -                 | -                    | -          |
           | {student[1].id}  | {student[1].uuid} | {organization[1].id} | George     |
         # Use values to specify constants that apply across all rows of the data
+        # Maybe not just contants, but also allow arrays or generators
         values:
           last_name: LogradoTest
+
+
+      # how about instead of having the user type out the factory names in the example,
+      # we do it for them, like....
+      - nane: itk_api.students
+        data: |
+          | id | uuid | organization_id | first_name |
+          | -  | -    | -               | -          |
+          | s1 | s1   | o1              | Bob        |
+          | s2 | s2   | o1              | Nancy      |
+        # when a column is marked as an identifier, the values in the table are no longer
+        # literal values, but instead are names that can be referenced elsewhere
+        identifiers:
+          id:
+            name: student
+            attribute: id
+          uuid:
+            name: student
+            attribute: uuid
+          organization_id:
+            name: organization
+            attribute: id
+        # ^ No need to deal with complicated syntax of {student[1].id}
+
+
+
+
+
 
 
       - name: itk_api.organizations
@@ -109,6 +141,8 @@ scenarios:
       - CanonicalStudent
 
     # retyping the collectors is kinda annoying.... what if they were declared up here
+    # Would they be scoped to a scenario or global?
+    #   .... wait.... we could scope them at several levels - global, scenario, case
     targets:
       - name: wh.sc_students
         collector:
@@ -156,6 +190,44 @@ scenarios:
               identifier: student
               attribute: uuid
 
+      - name: Full name is a concatenation of first/last name - alternative identifier method
+        factories:
+          - data: |
+            | id | uuid | organization_id | first_name | last_name |
+            | -  | -    | -               | -          | -         |
+            | s1 | s1   | o1              | Buffy      | Summers   |
+
+            # It's annoying that the identifiers have already been defined above, do we
+            # need to specify them again?
+            # Since we're overriding a factory source, maybe we could reuse an identifier if already set?
+            #   ^ v2
+            identifiers:
+              id:
+                name: student
+                attribute: id
+              uuid:
+                name: student
+                attribute: uuid
+              organization_id:
+                name: organization
+                attribute: id
+
+        expected:
+          - target: wh.sc_students
+            data: |
+              | student_uuid | full_name     |
+              | -            | -             |
+              | s1           | Buffy Summers |
+            by:
+              - student_uuid
+            # Would also be annoying to specify these in every case.
+            # There should be a way to specify (and override) them universally
+            identifiers:
+              uuid:
+                name: student_uuid
+                attribute: uuid
+
+
   # New scenario for a new set of background data
   #  maybe this is a separate run altogether, up to user to decide
   - name: PSCStudents
@@ -183,7 +255,6 @@ scenarios:
               by:
                 - student_uuid
                 - pipeline_uuid
-
 
 
 
