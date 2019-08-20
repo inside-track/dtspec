@@ -1,6 +1,8 @@
 import random
 import uuid
 
+from types import SimpleNamespace
+
 class UniqueIdGenerator: #pylint: disable=too-few-public-methods
     '''
     Class used to build id generators.
@@ -37,8 +39,18 @@ class UniqueIdGenerator: #pylint: disable=too-few-public-methods
         return next(self)
 
 
+# hrmmm...
+class IdGenerators:
+    @staticmethod
+    def unique_integer():
+        return UniqueIdGenerator
+
+    @staticmethod
+    def unique_string(prefix=''):
+        return lambda: UniqueIdGenerator(lambda i: '{}{}'.format(prefix, i))
+
 class Identifier:
-    GENERATOR_GENERATORS = {
+    GENERATOR_TYPES = {
         'unique_integer': UniqueIdGenerator,
         'unique_string': lambda: UniqueIdGenerator('str{}'.format),
         'uuid': lambda: uuid.uuid4
@@ -49,32 +61,38 @@ class Identifier:
         self.cases = {}
 
         self.generators = {
-            attr: self.GENERATOR_GENERATORS[props['generator']]()
+            attr: self.GENERATOR_TYPES[props['generator']]()
             for attr, props in self.attributes.items()
         }
 
-    def __getitem__(self, case):
+    def record(self, case, named_id):
         if case not in self.cases:
-            self.cases[case] = IdentifierCase(self.generators)
+            self.cases[case] = SimpleNamespace(records={})
+#            self.cases[case] = IdentifierCase(self.generators)
 
-        return self.cases[case]
+        if named_id not in self.cases[case].records:
+            # no, not records
+            self.cases[case].records[named_id] = SimpleNamespace(values={})
+            for attr, generator in self.generators.items():
+                self.cases[case].records[named_id].values[attr] = generator()
 
-class IdentifierCase:
-    def __init__(self, generators):
-        self.generators = generators
-        self.records = {}
+        return self.cases[case].records[named_id]
 
-    def __getitem__(self, name):
-        if name not in self.records:
-            self.records[name] = IdentifierCaseRecord(self.generators)
+#     def __getitem__(self, case):
+#         if case not in self.cases:
+#             self.cases[case] = IdentifierCase(self.generators)
 
-        return self.records[name]
+#         return self.cases[case]
 
+# class IdentifierCase:
+#     def __init__(self, generators):
+#         self.generators = generators
+#         self.records = {}
 
-class IdentifierCaseRecord:
-    def __init__(self, generators):
-        self.generators = generators
-        self.values = {}
+#     def __getitem__(self, name):
+#         if name not in self.records:
+#             self.records[name] = SimpleNamespace(values={})
+#             for attr, generator in self.generators.items():
+#                 self.records[name].values[attr] = generator()
 
-        for attr, generator in generators.items():
-            self.values[attr] = generator()
+#         return self.records[name]
