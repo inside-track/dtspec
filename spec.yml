@@ -69,12 +69,13 @@ factories:
 
       # how about instead of having the user type out the factory names in the example,
       # we do it for them, like....
-      - nane: itk_api.students
+      - name: itk_api.students
         data: |
           | id | uuid | organization_id | first_name |
           | -  | -    | -               | -          |
           | s1 | s1   | o1              | Bob        |
           | s2 | s2   | o1              | Nancy      |
+
         # when a column is marked as an identifier, the values in the table are no longer
         # literal values, but instead are names that can be referenced elsewhere
         identifiers:
@@ -264,13 +265,47 @@ scenarios:
 
 
 
+# Schemas may not be required.
+# But if a schema is specified, then data sources will include values that are faked
+
+# Seems the primary thing Schemas are doing is being used to fake
+# data.  Maybe that’s not necessary.  I really might be able to keep
+# everything as string
+
+# Not sure what value faking random data provides.  User could supply reasonable constants
+# for most cases.
+
 schemas:
   - name: itk_api.students
     fields:
       - name: id
-        type: integer
-        unique: True
-        not_null: True
+        # type should just be JSON types: string, number, json, array, boolean
+        #   ^ but maybe add other basics like integer, date, timestamp??
+        type: number
+        generator: unique_integer # this generator wouldn't be captured like identifiers
+
+      - name: first_name
+        type: string
+        # no need to specify generator to use default type generator (type=string => generator=string)
+
+      - name: tuituion
+        type: number
+        # this is started to feel like I need generator arguments
+        generator: decimal
+        precision: 8
+        scale: 2
+
+        # do I need to have type distinct from generator?
+        generator:
+          type: decimal
+          precision: 8
+          scale: 2
+
+      - name: enroll_date
+        type: date
+        generator_args:
+          format: %Y%m%d # would I ever need this?
+
 
       - name: uuid
         type: string
@@ -278,11 +313,6 @@ schemas:
         length: 32 # optional, only needed for very short varchars
         unique: True
         not_null: True
-        foreign_keys: # do I need these?
-          - source: itk_distribution.users
-            field: uuid
-          - source: itk_messaging.students
-            field: uuid
 
       - name: organization_id
         type: integer
