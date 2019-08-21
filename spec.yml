@@ -11,8 +11,6 @@ version: 0.0.0
 # Identifiers are shared across all scenarios
 identifiers:
   - name: student
-    # attributes, fields, keys, natural_keys,
-    # I like keys, but don't like the conflict with Python names
     attributes:
       - id:
           generator: unique_integer
@@ -23,12 +21,6 @@ identifiers:
           prefix: stu
       - console_id:
           generator: unique_integer
-      - whackadoodle:
-          generator: concatenator
-          delimiter: '-'
-          attributes:
-            - id
-            - external_id
 
   - name: organization
     attributes:
