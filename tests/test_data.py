@@ -1,7 +1,7 @@
 import pandas as pd
 from pandas.util.testing import assert_frame_equal
 
-import data_test_studio as dts
+import dts.data
 
 class TestMarkdownToDf:
     def test_convert_table_to_df(self):

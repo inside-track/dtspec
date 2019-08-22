@@ -1,7 +1,7 @@
 import re
 import pytest
 
-import data_test_studio as dts
+import dts.identifiers
 
 
 @pytest.fixture
