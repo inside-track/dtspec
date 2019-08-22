@@ -53,28 +53,12 @@ factories:
     sources:
       - name: itk_api.students
         # Use data for specifying individual records of data
-        # Schemas will be used to parse these tables to build the actual data and fill out unspecified fields
 
-        # Using {student[1].id} means to generate an id using the 'id' attribute of the 'student' identifier
-        #  This identifier is named '1', but a new id will actually be generated for every case
-        data: |
-          | id               | uuid              | organization_id      | first_name |
-          | -                | -                 | -                    | -          |
-          | {student[1].id}  | {student[1].uuid} | {organization[1].id} | George     |
-        # Use values to specify constants that apply across all rows of the data
-        # Maybe not just contants, but also allow arrays or generators
-        values:
-          last_name: LogradoTest
-
-
-      # how about instead of having the user type out the factory names in the example,
-      # we do it for them, like....
       - name: itk_api.students
         data: |
           | id | uuid | organization_id | first_name |
           | -  | -    | -               | -          |
           | s1 | s1   | o1              | Bob        |
-          | s2 | s2   | o1              | Nancy      |
 
         # when a column is marked as an identifier, the values in the table are no longer
         # literal values, but instead are names that can be referenced elsewhere
@@ -88,25 +72,32 @@ factories:
           organization_id:
             name: organization
             attribute: id
-        # ^ No need to deal with complicated syntax of {student[1].id}
-
-
-
-
-
-
 
       - name: itk_api.organizations
         data: |
-          | id                   | uuid                 |
-          | -                    | -                    |
-          | {organization[1].id} | {organization[1].id} |
+          | id | uuid |
+          | -  | -    |
+          | o1 | o1   |
+        identifiers:
+          id:
+            name: organization
+            attribute: id
+          uuid:
+            name: organization
+            attribute: uuid
 
       - name: itk_api.profiles
         data: |
-          | id                     | student_id      |
-          | -                      | -               |
-          | {generic[profiles].id} | {student[1].id} |
+          | id       | student_id |
+          | -        | -          |
+          | profile1 | s1         |
+        identifiers:
+          id:
+            name: generic
+            attribute: id
+          student_id:
+            name: student
+            attribute: id
 
   - name: StudentWithPipelines
     from:
@@ -115,10 +106,20 @@ factories:
     sources:
       - name: itk_api.pipelines
         data: |
-          | id               | uuid               | student_id      |
-          | -                | -                  | -               |
-          | {pipeline[1].id} | {pipeline[1].uuid} | {student[1].id} |
-          | {pipeline[2].id} | {pipeline[2].uuid} | {student[1].id} |
+          | id | uuid | student_id |
+          | -  | -    | -          |
+          | p1 | p1   | s1         |
+          | p2 | p2   | s1         |
+        identifiers:
+          id:
+            name: pipeline
+            attribute: id
+          uuid:
+            name: pipeline
+            attribute: uuid
+          student_id:
+            name: student
+            attribute: id
 
 
 # Statics are data that doesn't stack for every test case
