@@ -242,6 +242,86 @@ def test_identifier_defaults(identifiers):
     assert_frame_equal(actual, expected)
 
 
+def test_setting_values(identifiers):
+    source = Source(
+        id_mapping={
+            'id': {
+                'identifier': identifiers['student'],
+                'attribute': 'id'
+            }
+        }
+    )
+
+    source.stack(
+        'TestCase',
+        '''
+        | id | first_name |
+        | -  | -          |
+        | s1 | Bob        |
+        | s2 | Nancy      |
+        ''',
+        values={
+            'last_name': 'Summers'
+        }
+    )
+
+    actual = source.data
+    expected = dts.data.markdown_to_df(
+        '''
+        | id   | first_name | last_name |
+        | -    | -          | -         |
+        | {s1} | Bob        | Summers   |
+        | {s2} | Nancy      | Summers   |
+        '''.format(
+            s1=identifiers['student'].record(case='TestCase', named_id='s1')['id'],
+            s2=identifiers['student'].record(case='TestCase', named_id='s2')['id'],
+        )
+    )
+    assert_frame_equal(actual, expected)
+
+def test_setting_defaults_and_values(identifiers):
+    source = Source(
+        defaults={
+            'last_name': 'Jones',
+            'gender': 'X'
+        },
+        id_mapping={
+            'id': {
+                'identifier': identifiers['student'],
+                'attribute': 'id'
+            }
+        }
+    )
+
+    source.stack(
+        'TestCase',
+        '''
+        | id | first_name |
+        | -  | -          |
+        | s1 | Bob        |
+        | s2 | Nancy      |
+        ''',
+        values={
+            'last_name': 'Summers'
+        }
+    )
+
+    actual = source.data
+    expected = dts.data.markdown_to_df(
+        '''
+        | id   | first_name | last_name | gender |
+        | -    | -          | -         | -      |
+        | {s1} | Bob        | Summers   | X      |
+        | {s2} | Nancy      | Summers   | X      |
+        '''.format(
+            s1=identifiers['student'].record(case='TestCase', named_id='s1')['id'],
+            s2=identifiers['student'].record(case='TestCase', named_id='s2')['id'],
+        )
+    )
+    assert_frame_equal(actual, expected)
+
+
+
 @pytest.fixture
 def source_w_multiple_ids(identifiers):
     return Source(

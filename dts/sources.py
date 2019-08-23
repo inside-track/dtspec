@@ -19,17 +19,20 @@ class Source:
         self.data = pd.DataFrame()
 
 
-    def stack(self, case, markdown):
+    def stack(self, case, markdown, values=None):
+        'values override defaults at stack time'
+
         raw_df = dts.data.markdown_to_df(markdown)
-        w_defaults_df = self._add_defaults(raw_df, case)
+        w_defaults_df = self._add_defaults(raw_df, case, values)
         translated_df = self._translate_identifiers(w_defaults_df, case)
         self.data = pd.concat([self.data, translated_df]).reset_index(drop=True)
 
-    def _add_defaults(self, df, case):
-        if self.defaults is None:
+    def _add_defaults(self, df, case, values):
+        default_values = {**(self.defaults or {}), **(values or {})}
+        if len(default_values) == 0:
             return df
 
-        for column, value in self.defaults.items():
+        for column, value in default_values.items():
             if column in df.columns:
                 continue
 
