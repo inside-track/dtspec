@@ -6,6 +6,12 @@ sources:
   itk_api.students:
     values: # set default values that apply across all factories
       zipcode: 12345
+      some_uuid:
+        generator: unique_uuid
+      organization_id:
+        identifier: organization
+        attribute: id
+
 
     # This format has keys that are the columns of the tables, and shows how they relate to an identifier
     identifiers:
@@ -41,7 +47,6 @@ factories:
   CanonicalStudent:
     description: Simple easy student
 
-    # option 4
     data:
       itk_api.students:
         table: |
@@ -49,38 +54,13 @@ factories:
           | -  | -    | -               | -          |
           | s1 | s1   | o1              | Bob        |
 
-    # # option 1
-    # sources:
-    #   - name: itk_api.students
-    #     data: |
-    #       | id | uuid | organization_id | first_name |
-    #       | -  | -    | -               | -          |
-    #       | s1 | s1   | o1              | Bob        |
 
-    # # option 2
-    # itk_api.students:
-    #   data: |
-    #     | id | uuid | organization_id | first_name |
-    #     | -  | -    | -               | -          |
-    #     | s1 | s1   | o1              | Bob        |
-
-    # # option 3
-    # data:
-    #   - source: itk_api.students
-    #     table: |
-    #       | id | uuid | organization_id | first_name |
-    #       | -  | -    | -               | -          |
-    #       | s1 | s1   | o1              | Bob        |
-
-
-
-
-  - name: StudentWithoutName
+  StudentWithoutName:
     description: Simple easy student, but missing a name
 
-    sources:
-      - name: itk_api.students
-        data: |
+    data:
+      itk_api.students:
+        table: |
           | id | uuid | organization_id | first_name |
           | -  | -    | -               | -          |
           | s1 | s1   | o1              |            |

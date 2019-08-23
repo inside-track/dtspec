@@ -52,7 +52,7 @@ class IdGenerators:
 
     @staticmethod
     def uuid():
-        return uuid.uuid4
+        return lambda: str(uuid.uuid4())
 
 
 class Identifier:

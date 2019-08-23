@@ -1,16 +1,22 @@
 import json
 
 import pytest
-from pandas.util.testing import assert_frame_equal
 
 import dts.identifiers
 from dts.sources import Source
+
+from tests import assert_frame_equal
 
 @pytest.fixture
 def identifiers():
     return {
         'student': dts.identifiers.Identifier({
-            'id': {'generator': 'unique_integer'}
+            'id': {'generator': 'unique_integer'},
+            'uuid': {'generator': 'uuid'},
+        }),
+        'organization': dts.identifiers.Identifier({
+            'id': {'generator': 'unique_integer'},
+            'uuid': {'generator': 'uuid'},
         })
     }
 
@@ -114,3 +120,183 @@ def test_data_converts_to_json(simple_source, identifiers):
     ], separators=(',', ':'))
 
     assert actual == expected
+
+def test_setting_defaults(identifiers):
+    source = Source(
+        defaults={
+            'last_name': 'Jones'
+        },
+        id_mapping={
+            'id': {
+                'identifier': identifiers['student'],
+                'attribute': 'id'
+            }
+        }
+    )
+
+    source.stack(
+        'TestCase',
+        '''
+        | id | first_name |
+        | -  | -          |
+        | s1 | Bob        |
+        | s2 | Nancy      |
+        '''
+    )
+
+    actual = source.data
+    expected = dts.data.markdown_to_df(
+        '''
+        | id   | first_name | last_name |
+        | -    | -          | -         |
+        | {s1} | Bob        | Jones     |
+        | {s2} | Nancy      | Jones     |
+        '''.format(
+            s1=identifiers['student'].record(case='TestCase', named_id='s1')['id'],
+            s2=identifiers['student'].record(case='TestCase', named_id='s2')['id'],
+        )
+    )
+    assert_frame_equal(actual, expected)
+
+def test_overriding_defaults(identifiers):
+    source = Source(
+        defaults={
+            'last_name': 'Jones'
+        },
+        id_mapping={
+            'id': {
+                'identifier': identifiers['student'],
+                'attribute': 'id'
+            }
+        }
+    )
+
+    source.stack(
+        'TestCase',
+        '''
+        | id | first_name | last_name |
+        | -  | -          | -         |
+        | s1 | Bob        | Not Jones |
+        | s2 | Nancy      | Not Jones |
+        '''
+    )
+
+    actual = source.data
+    expected = dts.data.markdown_to_df(
+        '''
+        | id   | first_name | last_name |
+        | -    | -          | -         |
+        | {s1} | Bob        | Not Jones |
+        | {s2} | Nancy      | Not Jones |
+        '''.format(
+            s1=identifiers['student'].record(case='TestCase', named_id='s1')['id'],
+            s2=identifiers['student'].record(case='TestCase', named_id='s2')['id'],
+        )
+    )
+    assert_frame_equal(actual, expected)
+
+def test_identifier_defaults(identifiers):
+    source = Source(
+        defaults={
+            'organization_id': {
+                'identifier': identifiers['organization'],
+                'attribute': 'id'
+            }
+        },
+        id_mapping={
+            'id': {
+                'identifier': identifiers['student'],
+                'attribute': 'id'
+            }
+        }
+    )
+
+    source.stack(
+        'TestCase',
+        '''
+        | id | first_name |
+        | -  | -          |
+        | s1 | Bob        |
+        | s2 | Nancy      |
+        '''
+    )
+
+    anonymous_ids = [
+        v['id'] for v in identifiers['organization'].cases['TestCase'].named_ids.values()
+    ]
+
+    actual = source.data
+    expected = dts.data.markdown_to_df(
+        '''
+        | id   | first_name | organization_id |
+        | -    | -          | -               |
+        | {s1} | Bob        | {o1}            |
+        | {s2} | Nancy      | {o2}            |
+        '''.format(
+            s1=identifiers['student'].record(case='TestCase', named_id='s1')['id'],
+            s2=identifiers['student'].record(case='TestCase', named_id='s2')['id'],
+            o1=anonymous_ids[0],
+            o2=anonymous_ids[1]
+        )
+    )
+    assert_frame_equal(actual, expected)
+
+
+@pytest.fixture
+def source_w_multiple_ids(identifiers):
+    return Source(
+        id_mapping={
+            'id': {
+                'identifier': identifiers['student'],
+                'attribute': 'id'
+            },
+            'uuid': {
+                'identifier': identifiers['student'],
+                'attribute': 'uuid'
+            },
+            'organization_id': {
+                'identifier': identifiers['organization'],
+                'attribute': 'id'
+            }
+        }
+    )
+
+def test_multiple_identifers_are_translated(source_w_multiple_ids, identifiers):
+    source_w_multiple_ids.stack(
+        'TestCase',
+        '''
+        | id | uuid | organization_id |first_name  |
+        | -  | -    | -               | -          |
+        | s1 | s1   | o1              | Bob        |
+        | s2 | s2   | o1              | Nancy      |
+        '''
+    )
+
+    actual = source_w_multiple_ids.data
+    expected = dts.data.markdown_to_df(
+        '''
+        | id   | uuid  | organization_id | first_name |
+        | -    | -     | -               | -          |
+        | {s1} | {su1} | {o1}            | Bob        |
+        | {s2} | {su2} | {o1}            | Nancy      |
+        '''.format(
+            s1=identifiers['student'].record(case='TestCase', named_id='s1')['id'],
+            s2=identifiers['student'].record(case='TestCase', named_id='s2')['id'],
+            su1=identifiers['student'].record(case='TestCase', named_id='s1')['uuid'],
+            su2=identifiers['student'].record(case='TestCase', named_id='s2')['uuid'],
+            o1=identifiers['organization'].record(case='TestCase', named_id='o1')['id'],
+        )
+    )
+    assert_frame_equal(actual, expected)
+
+def test_all_identifying_columns_must_be_present(source_w_multiple_ids, identifiers):
+    with pytest.raises(dts.sources.IdentifierWithoutColumnError):
+        source_w_multiple_ids.stack(
+            'TestCase',
+            '''
+            | id | first_name  |
+            | -  | -           |
+            | s1 | Bob         |
+            | s2 | Nancy       |
+            '''
+        )
