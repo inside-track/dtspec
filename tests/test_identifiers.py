@@ -14,7 +14,7 @@ def student():
 
 
 def test_unique_int_generates_int(student):
-    assert isinstance(student.record(case='TestCase', named_id='stuX')['id'], int)
+    assert isinstance(int(student.record(case='TestCase', named_id='stuX')['id']), int)
 
 def test_unique_str_generates_str(student):
     assert isinstance(student.record(case='TestCase', named_id='stuX')['external_id'], str)

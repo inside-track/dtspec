@@ -44,7 +44,7 @@ class IdGenerators:
 
     @staticmethod
     def unique_integer():
-        return UniqueIdGenerator()
+        return UniqueIdGenerator(str)
 
     @staticmethod
     def unique_string(prefix=''):
