@@ -6,7 +6,7 @@ sources:
   itk_api.students:
     values: # set default values that apply across all factories
       zipcode: 12345
-      some_uuid:
+      some_uuid: # don't think this is particularly valueable.  Could always use a misc identifier
         generator: unique_uuid
       organization_id:
         identifier: organization
