@@ -15,6 +15,8 @@ class Factory:
             source = self.sources[source_name]
             source.stack(
                 case=case,
+                # factories are the only thing that should call sources, so I could refactor
+                # sources to accept a dataframe an keep the parsing in Factories
                 markdown=self.data[source_name]['table'],
                 values={
                     **(source.defaults or {}),

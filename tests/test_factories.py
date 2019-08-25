@@ -59,12 +59,18 @@ def sources(identifiers):
                     'identifier': identifiers['organization'],
                     'attribute': 'uuid'
                 }
+            },
+            defaults={
+                'uuid': {
+                    'identifier': identifiers['organization'],
+                    'attribute': 'uuid'
+                }
             }
         )
 
     }
 
-def test_factories_stack_sources(identifiers, sources):
+def test_factories_stack_a_source(identifiers, sources):
     factory = Factory(
         data={
             'students': {
@@ -95,3 +101,57 @@ def test_factories_stack_sources(identifiers, sources):
     )
     actual = sources['students'].data.drop(columns=sources['students'].defaults.keys())
     assert_frame_equal(actual, expected)
+
+def test_factories_stack_sources(identifiers, sources):
+    factory = Factory(
+        data={
+            'students': {
+                'table': '''
+                | id | organization_id | first_name |
+                | -  | -               | -          |
+                | s1 | o1              | Buffy      |
+                | s2 | o1              | Willow     |
+                ''',
+            },
+            'organizations': {
+                'table': '''
+                | id | name           |
+                | -  | -              |
+                | o1 | Sunnydale High |
+                ''',
+            }
+        },
+        sources=sources
+    )
+
+    factory.generate('TestCase')
+
+    expected_students = dts.data.markdown_to_df(
+        '''
+        | id   | organization_id | first_name |
+        | -    | -               | -          |
+        | {s1} | {o1}            | Buffy      |
+        | {s2} | {o1}            | Willow     |
+        '''.format(
+            s1=identifiers['student'].record(case='TestCase', named_id='s1')['id'],
+            s2=identifiers['student'].record(case='TestCase', named_id='s2')['id'],
+            o1=identifiers['organization'].record(case='TestCase', named_id='o1')['id'],
+        )
+    )
+    actual_students = sources['students'].data.drop(columns=['external_id'])
+
+    expected_organizations = dts.data.markdown_to_df(
+        '''
+        | id   | name           |
+        | -    | -              |
+        | {o1} | Sunnydale High |
+        '''.format(
+            o1=identifiers['organization'].record(case='TestCase', named_id='o1')['id'],
+        )
+    )
+    actual_organizations = sources['organizations'].data.drop(columns=['uuid'])
+
+    assert_frame_equal(actual_students, expected_students)
+    assert_frame_equal(actual_organizations, expected_organizations)
+
+def

@@ -51,7 +51,7 @@ class Source:
         missing_columns = set(self.id_mapping.keys()) - set(df.columns)
         if len(missing_columns) > 0:
             raise IdentifierWithoutColumnError(
-                'Must have columns for identifiers: {}'.format(missing_columns)
+                'Data source is missing columns corresponding to identifier attributes: {}'.format(missing_columns)
             )
 
 
