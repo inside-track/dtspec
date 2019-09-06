@@ -3,6 +3,7 @@ import json
 import pytest
 
 import dts.identifiers
+import dts.data
 from dts.sources import Source
 
 from tests import assert_frame_equal
@@ -34,12 +35,12 @@ def simple_source(identifiers):
 def test_identifers_are_translated(simple_source, identifiers):
     simple_source.stack(
         'TestCase',
-        '''
+        dts.data.markdown_to_df('''
         | id | first_name |
         | -  | -          |
         | s1 | Bob        |
         | s2 | Nancy      |
-        '''
+        ''')
     )
 
     actual = simple_source.data
@@ -59,22 +60,22 @@ def test_identifers_are_translated(simple_source, identifiers):
 def test_sources_stack(simple_source, identifiers):
     simple_source.stack(
         'TestCase1',
-        '''
+        dts.data.markdown_to_df('''
         | id | first_name |
         | -  | -          |
         | s1 | Bob        |
         | s2 | Nancy      |
-        '''
+        ''')
     )
 
     simple_source.stack(
         'TestCase2',
-        '''
+        dts.data.markdown_to_df('''
         | id | first_name |
         | -  | -          |
         | s1 | Bobob      |
         | s2 | Nanci      |
-        '''
+        ''')
     )
 
 
@@ -99,12 +100,12 @@ def test_sources_stack(simple_source, identifiers):
 def test_data_converts_to_json(simple_source, identifiers):
     simple_source.stack(
         'TestCase',
-        '''
+        dts.data.markdown_to_df('''
         | id | first_name |
         | -  | -          |
         | s1 | Bob        |
         | s2 | Nancy      |
-        '''
+        ''')
     )
 
     actual = simple_source.to_json()
@@ -136,12 +137,12 @@ def test_setting_defaults(identifiers):
 
     source.stack(
         'TestCase',
-        '''
+        dts.data.markdown_to_df('''
         | id | first_name |
         | -  | -          |
         | s1 | Bob        |
         | s2 | Nancy      |
-        '''
+        ''')
     )
 
     actual = source.data
@@ -173,12 +174,12 @@ def test_overriding_defaults(identifiers):
 
     source.stack(
         'TestCase',
-        '''
+        dts.data.markdown_to_df('''
         | id | first_name | last_name |
         | -  | -          | -         |
         | s1 | Bob        | Not Jones |
         | s2 | Nancy      | Not Jones |
-        '''
+        ''')
     )
 
     actual = source.data
@@ -213,12 +214,12 @@ def test_identifier_defaults(identifiers):
 
     source.stack(
         'TestCase',
-        '''
+        dts.data.markdown_to_df('''
         | id | first_name |
         | -  | -          |
         | s1 | Bob        |
         | s2 | Nancy      |
-        '''
+        ''')
     )
 
     anonymous_ids = [
@@ -254,12 +255,12 @@ def test_setting_values(identifiers):
 
     source.stack(
         'TestCase',
-        '''
+        dts.data.markdown_to_df('''
         | id | first_name |
         | -  | -          |
         | s1 | Bob        |
         | s2 | Nancy      |
-        ''',
+        '''),
         values={
             'last_name': 'Summers'
         }
@@ -295,12 +296,12 @@ def test_setting_defaults_and_values(identifiers):
 
     source.stack(
         'TestCase',
-        '''
+        dts.data.markdown_to_df('''
         | id | first_name |
         | -  | -          |
         | s1 | Bob        |
         | s2 | Nancy      |
-        ''',
+        '''),
         values={
             'last_name': 'Summers'
         }
@@ -344,12 +345,12 @@ def source_w_multiple_ids(identifiers):
 def test_multiple_identifers_are_translated(source_w_multiple_ids, identifiers):
     source_w_multiple_ids.stack(
         'TestCase',
-        '''
+        dts.data.markdown_to_df('''
         | id | uuid | organization_id |first_name  |
         | -  | -    | -               | -          |
         | s1 | s1   | o1              | Bob        |
         | s2 | s2   | o1              | Nancy      |
-        '''
+        ''')
     )
 
     actual = source_w_multiple_ids.data
@@ -373,10 +374,10 @@ def test_all_identifying_columns_must_be_present(source_w_multiple_ids, identifi
     with pytest.raises(dts.sources.IdentifierWithoutColumnError):
         source_w_multiple_ids.stack(
             'TestCase',
-            '''
+            dts.data.markdown_to_df('''
             | id | first_name  |
             | -  | -           |
             | s1 | Bob         |
             | s2 | Nancy       |
-            '''
+            ''')
         )
