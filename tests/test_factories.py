@@ -81,7 +81,6 @@ def test_factories_stack_a_source(identifiers, sources):
                 | s1 | Buffy      |
                 | s2 | Willow     |
                 ''',
-                #TODO: values (defaults)
             }
         },
         sources=sources
@@ -348,3 +347,69 @@ def test_multiple_inheritance(identifiers, sources):
     expected = base2_factory.data['organizations']['dataframe']
     actual = composite_factory.data['organizations']['dataframe']
     assert_frame_equal(actual, expected)
+
+
+def test_inheritance_defaults_are_overridden(identifiers, sources):
+    base_factory = Factory(
+        data={
+            'students': {
+                'table': '''
+                | id |
+                | -  |
+                | s1 |
+                ''',
+                'values': {
+                    'first_name': 'Bob'
+                }
+            }
+        },
+        sources=sources
+    )
+
+    composite_factory = Factory(
+        data={
+            'students': {
+                'table': '''
+                | id |
+                | -  |
+                | s1 |
+                ''',
+                'values': {
+                    'last_name': 'Loblaw'
+                }
+            }
+        },
+        inherit_from=[base_factory],
+        sources=sources
+    )
+
+    composite_factory.generate('TestCase')
+
+    expected = dts.data.markdown_to_df(
+        '''
+        | id   | first_name | last_name |
+        | -    | -          | -         |
+        | {s1} | Bob        | Loblaw    |
+        '''.format(
+            s1=identifiers['student'].record(case='TestCase', named_id='s1')['id'],
+        )
+    )
+    actual = sources['students'].data.drop(columns=['external_id', 'organization_id'])
+    assert_frame_equal(actual, expected)
+
+def test_merge_data():
+    data1 = {
+        'students': {'table': 'a', 'dataframe': 'a', 'values': {'value_a1': 'a', 'X': 'a'}}
+    }
+    data2 = {
+        'students': {'table': 'b', 'dataframe': 'b', 'values': {'value_b1': 'b', 'X': 'b'}},
+        'organizations': {'table': 'b', 'dataframe': 'b'},
+
+    }
+
+    actual = Factory.merge_data(data1, data2)
+    expected = {
+        'students': {'table': 'b', 'dataframe': 'b', 'values': {'value_a1': 'a', 'X': 'b', 'value_b1': 'b'}},
+        'organizations': {'table': 'b', 'dataframe': 'b'},
+    }
+    assert actual == expected
