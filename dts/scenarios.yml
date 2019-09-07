@@ -1,0 +1,46 @@
+scenarios:
+  SCStudents: # Scenario names must be globally unique
+    description: Populating the wh.sc_students table
+
+    factories: # factories defined at this level are implicitly inherited by each case
+      - CanonicalStudent
+
+    targets:
+      wh.sc_students:
+        # Follow the same conventions as identifying sources - keys are columns in table, shows how they relate to defined identifiers
+        identifiers:
+          student_id:
+            name: student
+            attribute: external_id
+
+    cases:
+      ItHasData: # Cases must be unique within a scenario
+        description: Some data is in the output
+
+        expected:
+          data:
+            wh.sc_students:
+              table: |
+                | student_id | organization_name | first_name |
+                | -          | -                 | -          |
+                | s1         | Sunnydale High    | Buffy      |
+
+      DeduplicatesStudents:
+        description: Duplicate students are dropped, first one wins
+
+        factories: # Implicitly inherits from scenario factories, but they can be overridden
+          data:
+            itk_api.students:
+              table: |
+                | id | external_id | first_name |
+                | -  | -           | -          |
+                | s1 | s1          | Buffy      |
+                | s2 | s1          | Spike      |
+
+        expected:
+          data:
+            wh.sc_students:
+              table: |
+                | student_id | first_name |
+                | -          | -          |
+                | s1         | Buffy      |
