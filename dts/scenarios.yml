@@ -1,3 +1,5 @@
+# Scenarios are mostly a mechanism to group together cases that share a
+#  common set of foundational factories.
 scenarios:
   SCStudents: # Scenario names must be globally unique
     description: Populating the wh.sc_students table
@@ -5,6 +7,9 @@ scenarios:
     factories: # factories defined at this level are implicitly inherited by each case
       - CanonicalStudent
 
+    # On second thought, I wonder if targets should be defined at the same level as sources,
+    #   otherwise, I could have conflicting identifiers across different scenarios, which
+    #   may be confusing to handle.
     targets:
       wh.sc_students:
         # Follow the same conventions as identifying sources - keys are columns in table, shows how they relate to defined identifiers
