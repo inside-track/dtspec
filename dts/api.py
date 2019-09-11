@@ -39,7 +39,7 @@ SCHEMA={
             "uniqueItems": True,
             "items": {
                 "type": "object",
-                "required": ["source"],
+                "required": ["source", "table"],
                 "additionalProperties": False,
                 "properties": {
                     "source": {"type": "string"},
@@ -79,11 +79,10 @@ SCHEMA={
                             "target": {"type": "string"},
                             "table": {"type": "string"},
                             "by": {"type": "array", "items": {"type": "string"}}
-                        }
-                    }
-                }
-            }
-
+                        },
+                    },
+                },
+            },
         },
     },
     "type": "object",
@@ -110,11 +109,11 @@ SCHEMA={
                             "properties": {
                                 "field": {"type": "string"},
                                 "generator": {"type": "string"}
-                            }
-                        }
+                            },
+                        },
                     },
                 },
-            }
+            },
         },
         "sources": {
             "type": "array",
@@ -128,8 +127,8 @@ SCHEMA={
                     "source": {"type": "string"},
                     "defaults": {"$ref": "#/definitions/column_values"},
                     "identifier_map": {"$ref": "#/definitions/identifier_map"}
-                }
-            }
+                },
+            },
         },
         "targets": {
             "type": "array",
@@ -142,8 +141,8 @@ SCHEMA={
                 "properties": {
                     "target": {"type": "string"},
                     "identifier_map": {"$ref": "#/definitions/identifier_map"}
-                }
-            }
+                },
+            },
         },
         "factories": {
             "type": "array",
@@ -161,8 +160,8 @@ SCHEMA={
                         "items": {"type": "string"}
                     },
                     "data": {"$ref": "#/definitions/factory_data"}
-                }
-            }
+                },
+            },
         },
         "scenarios": {
             "type": "array",
@@ -201,11 +200,11 @@ SCHEMA={
                                     }
                                 },
                                 "expected": {"$ref": "#/definitions/expected"}
-                            }
-                        }
-                    }
-                }
-            }
+                            },
+                        },
+                    },
+                },
+            },
         },
         "metadata": { "type": "object" }
     },
@@ -213,11 +212,17 @@ SCHEMA={
     "additionalProperties": False
 }
 
+class ApiValidationError(Exception): pass
+class ApiDuplicateError(ApiValidationError): pass
+class ApiReferentialError(ApiValidationError): pass
+
+# TODO: descriptions on all the things
 class Api:
     def __init__(self, json_spec):
-        self.spec = self._parse_sepc(json_spec)
+        self.spec = {}
+        self._parse_spec(json_spec)
 
-    def parse_spec(self, json_spec):
+    def _parse_spec(self, json_spec):
         'Converts the raw JSON spec into internal objects used to generate source data and run assertions'
         jsonschema.validate(json_spec, SCHEMA)
 
@@ -226,6 +231,12 @@ class Api:
 
         if 'sources' in json_spec:
             self.spec['sources'] = self._parse_spec_sources(json_spec['sources'])
+
+        if 'targets' in json_spec:
+            self.spec['targets'] = self._parse_spec_targets(json_spec['targets'])
+
+        if 'factories' in json_spec:
+            self.spec['factories'] = self._parse_spec_factories(json_spec['factories'])
 
 
     def generate_sources(self):
@@ -241,23 +252,93 @@ class Api:
         raise NotImplementedError
 
     @staticmethod
-    def _parse_spec_identifiers(raw_spec_identifiers):
-        spec_identifiers = {}
-        for identifier_name, attributes in raw_spec_identifiers.items():
-            spec_identifiers[identifier_name] = Identifier(attributes)
-        return spec_identifiers
+    def _parse_spec_identifiers(json_spec):
+        spec = {}
+        for identifier_json in json_spec:
+            identifier_name = identifier_json['identifier']
+            attr_list = identifier_json['attributes']
 
-    @staticmethod
-    def _parse_spec_sources(raw_spec_sources):
-        spec_sources = {}
-        for source_name, attributes in raw_spec_sources.items():
-            spec_sources[source_name] = Source(
-                defaults=attributes['defaults'],
-                id_mapping={
-                    col: {
-                        'identfier': self.spec['identifiers'][identifier_spec['identifier']],
-                        'attribute': identifier_spec['attribute']
-                    }
-                    for col, identifier_spec in attributes['identifiers'].items()
+            if identifier_name in spec:
+                raise ApiDuplicateError(f'Duplicate identifiers detected: {identifier_name}')
+
+            attributes = {}
+            for attr in attr_list:
+                attr_name = attr['field']
+                attr_args = {k:v for k,v in attr.items() if k != 'field'}
+                attributes[attr_name] = attr_args
+
+            spec[identifier_name] = Identifier(attributes)
+        return spec
+
+    def _parse_spec_sources(self, json_spec):
+        spec = {}
+        for source_json in json_spec:
+            source_name = source_json['source']
+
+            defaults = {}
+            for default in source_json.get('defaults', {}):
+                defaults[default['column']] = default['value']
+
+            id_mapping = {}
+            for id_map in source_json.get('identifier_map', {}):
+                identifier_name = id_map['identifier']['name']
+                if identifier_name not in self.spec['identifiers']:
+                    raise ApiReferentialError(
+                        f'Unable to find identifier "{identifier_name}" referenced in source "{source_name}"'
+                    )
+                id_mapping[id_map['column']] = {
+                    'identifier': self.spec['identifiers'][identifier_name],
+                    'attribute': id_map['identifier']['attribute']
                 }
+
+
+            spec[source_name] = Source(
+                defaults=defaults,
+                id_mapping=id_mapping
             )
+        return spec
+
+    def _parse_spec_targets(self, json_spec):
+        'not yet implemented'
+        return {}
+
+    def _parse_spec_factories(self, json_spec):
+        spec = {}
+        for factory_json in json_spec:
+            factory_name = factory_json['factory']
+            factory_data = self._parse_spec_factory_data(factory_json['data'], factory_name)
+
+            if factory_name in spec:
+                raise ApiDuplicateError(f'Duplicate factories detected: {factory_name}')
+
+
+            inherit_from = []
+            for parent_factory in factory_json.get('parents', []):
+                if parent_factory not in spec.keys():
+                    raise ApiReferentialError(
+                        f'Unable to find parent factory "{parent_factory}" referenced in factory "{factory_name}"'
+                    )
+
+                inherit_from.append(spec[parent_factory])
+
+            spec[factory_name] = Factory(
+                data=factory_data,
+                inherit_from=inherit_from,
+                sources=self.spec['sources']
+            )
+        return spec
+
+    def _parse_spec_factory_data(self, json_spec, factory_name):
+        spec = {}
+        for data in json_spec:
+            source_name = data['source']
+            if source_name not in self.spec['sources'].keys():
+                raise ApiReferentialError(
+                    f'Unable to find source "{source_name}" referenced in factory "{factory_name}"'
+                )
+            spec[source_name] = {
+                'table': data.get('table', None),
+                'values': {value['column']: value['value'] for value in data.get('values', [])}
+            }
+
+        return spec

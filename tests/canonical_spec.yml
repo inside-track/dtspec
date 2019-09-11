@@ -79,13 +79,6 @@ sources:
     defaults:
       - column: first_name
         value: Bob
-      # Identifiers can also be used as defaults.  These can be useful for foreign key relations.
-      # Each record generated for the source will pull from the identifier's generator.
-# TODO: maybe scrap this and just use the identifiers section
-      # - column: school_id
-      #   identifier:
-      #     name: schools
-      #     attribute: id
     # Sources should usually be associated with an identifier.  We map the
     # columns of the source to an appropriate attribute of the identifier.
     identifier_map:

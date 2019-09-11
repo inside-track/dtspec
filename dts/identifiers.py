@@ -65,6 +65,7 @@ class Identifier:
             generator_args = {k:v for k,v in props.items() if k != 'generator'}
             self.generators[attr] = getattr(IdGenerators, props['generator'])(**generator_args)
 
+    # TODO: rename to generate
     def record(self, case, named_id):
         if case not in self.cases:
             self.cases[case] = SimpleNamespace(named_ids={})
