@@ -1,3 +1,28 @@
+# This is a canonical dts test spec used for testing and low-level documentation.
+
+# Genereal principles of a dts test spec:
+
+# A dts test spec describes a set of test *cases*, which are used to define
+# data sources and the expected results following some set of data transformations.
+# Test *cases* can be grouped into *scenarios* that share some common set of data
+# sources or data targets.
+
+# A test spec is used to test the behavior of a single execution of a
+# set of data transformations.  The data transformations may involve
+# multiple steps with multiple data sources and targets.
+# With dts, we define all of test source data and expectations up front.  If
+# there are multiple test cases that use the same source data, then each test
+# case will "stack" (concantenate) data for that source.
+
+# After the test spec is defined, dts will respond will all of the stacked
+# data sources.  The user will then inject those test data sources into whatever
+# system they are using to run the data transformations.  They will then run
+# the transformations and collect all of the resulting target data.
+
+# The target data is then loaded back into the dts test api, and data assertions
+# are run to ensure that the actual result data conforms to the
+# expected data specified in the test spec.
+
 ---
 version: '0.1'
 
@@ -8,35 +33,39 @@ version: '0.1'
 # Cases will contain assertions about the results of a run
 #  - they can also contain additional conditions about data defined in a scenario
 
+# Identifiers are used to identify specific records and group them into test cases
 # Identifiers are shared across all scenarios
-# They are used to identify specific records and group them into specific cases
+# They
 identifiers:
   # this is the "students" identifier.  It has 3 different attributes, any of which can be
   # used identify a record as a student.
-  students:
-    id:
+  - identifier: students
+    attributes:
       # Generators indicate how the unique identifier should be created.
       # Note that dts treats all data as string, but this will be a string that can be converted
       #  into an integer
-      generator: unique_integer
-    uuid:
-      generator: uuid
-    external_id:
-      generator: unique_string
-      # Additional keys can be used as optional arguments to the generators
-      prefix: stu
+      - field: id
+        generator: unique_integer
+      - field: uuid
+        generator: uuid
+      - field: external_id
+        generator: unique_string
+        # Additional keys can be used as optional arguments to the generators
+        prefix: stu
 
   # Multiple identifiers can be defined.  The unique attributes created may end up the same
   #  as other identifiers.
-  schools:
-    id:
-      generator: unique_integer
+  - identifier: schools
+    attributes:
+      - field: id
+        generator: unique_integer
 
-  classes:
-    id:
-      generator: unique_integer
-    external_id:
-      generator: unique_string
+  - identifier: classes
+    attributes:
+      - field: id
+        generator: unique_integer
+      - field: external_id
+        generator: unique_string
 
 
 
@@ -45,52 +74,57 @@ identifiers:
 sources:
   # Give each source a name.  User must map them onto their own names.
   # Here's an example of a schema.table source that would easily map to a Redshift table
-  itk_api.students:
+  - source: itk_api.students
     # Unless otherwise specified by a factory, sources can be populated with default values
     defaults:
-      first_name: Bob
+      - column: first_name
+        value: Bob
       # Identifiers can also be used as defaults.  These can be useful for foreign key relations.
       # Each record generated for the source will pull from the identifier's generator.
 # TODO: maybe scrap this and just use the identifiers section
-      school_id:
-        identifier: schools
-        attribute: id
+      # - column: school_id
+      #   identifier:
+      #     name: schools
+      #     attribute: id
     # Sources should usually be associated with an identifier.  We map the
     # columns of the source to an appropriate attribute of the identifier.
-    identifiers:
-      # Keys here are columns of the source
-      id:
-        identifier: students
-        attribute: id
-      external_id:
-        identifier: students
-        attribute: external_id
+    identifier_map:
+      - column: id
+        identifier:
+          name: students
+          attribute: id
+      - column: external_id
+        identifier:
+          name: students
+          attribute: id
 
-  itk_api.schools:
-    identifiers:
-      id:
-        identifier: schools
-        attribute: id
+  - source: itk_api.schools
+    identifier_map:
+      - column: id
+        identifier:
+          name: schools
+          attribute: id
 
   # Sources don't need to have identifiers if they won't be used to identify target records
-  itk_api.classes:
+  - source: itk_api.classes
     defaults:
-      name: Some Class
-
+      - column: name
+        value: Some Class
 
 targets:
-  denormalized_students:
-    identifiers:
-      student_id:
-        identifier: students
-        attribute: external_id
+  - target: denormalized_students
+    identifier_map:
+      - column: student_id
+        identifier:
+          name: students
+          attribute: external_id
 
 factories:
-  CanonicalStudent:
+  - factory: CanonicalStudent
     description: Simple easy student, tied to a school, no classes
 
     data:
-      itk_api.students:
+      - source: itk_api.students
         table: |
           | id   | uuid   | school_id   | first_name |
           | -    | -      | -           | -          |
@@ -98,8 +132,11 @@ factories:
           | stu2 | stu2   | sch1        | Willow     |
           | stu3 | stu3   | sch2        | Bill       |
           | stu4 | stu4   | sch2        | Ted        |
+        values:
+          - column: last_name
+            value: Unknown
 
-      itk_api.schools:
+      - source: itk_api.schools
         table: |
           | id   | name      |
           | -    | -         |
@@ -107,12 +144,12 @@ factories:
           | sch2 | San Dimas |
 
 
-  StudentWithClasses:
-    inherits_from:
+  - factory: StudentWithClasses
+    parents:
       - CanonicalStudent
 
     data:
-      itk_api.classes:
+      - source: itk_api.classes
         table: |
           | student_id | name            |
           | -          | -               |
@@ -122,17 +159,18 @@ factories:
           | stu4       | Being Excellent |
 
 scenarios:
-  DenormalizingStudentClasses:
+  - scenario: DenormalizingStudentClasses
     description: Some tests about denormalizing the student-class data
+    # implies that all cases in this scenario will inherit from this factory
     factories:
       - StudentWithClasses
 
     cases:
-      BasicDenormalization:
+      - case: BasicDenormalization
         description: A canonical example of denormalization
         expected:
           data:
-            denormalized_students:
+            - target: denormalized_students
               table: |
                 | student_id | first_name | school_name | class_name      |
                 | -          | -          | -           | -               |
@@ -145,11 +183,11 @@ scenarios:
                 - student_id
 
 
-      MissingClasses:
+      - case: MissingClasses
         description: Students without classes are excluded from denormalized table
-        factories:
+        factory:
           data:
-            itk_api.classes:
+            - source: itk_api.classes
               table: |
                 | student_id | name            |
                 | -          | -               |
@@ -158,7 +196,7 @@ scenarios:
 
         expected:
           data:
-            denormalized_students:
+            - target: denormalized_students
               table: |
                 | student_id | first_name | school_name | class_name      |
                 | -          | -          | -           | -               |
@@ -167,11 +205,11 @@ scenarios:
               by:
                 - student_id
 
-      MultipleClasses:
+      - case: MultipleClasses
         description: Students with multiple classes have multiple records
-        factories:
+        factory:
           data:
-            itk_api.classes:
+            - source: itk_api.classes
               table: |
                 | student_id | name            |
                 | -          | -               |
@@ -184,7 +222,7 @@ scenarios:
 
         expected:
           data:
-            denormalized_students:
+            - target: denormalized_students
               table: |
                 | student_id | first_name | school_name | class_name      |
                 | -          | -          | -           | -               |

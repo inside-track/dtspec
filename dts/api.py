@@ -44,24 +44,47 @@ SCHEMA={
                 "properties": {
                     "source": {"type": "string"},
                     "table": {"type": "string"},
-                    "values": {
-                        "type": "array",
-                        "minItems": 1,
-                        "uniqueItems": True,
-                        "items": {
-                            "type": "object",
-                            "required": ["column", "value"],
-                            "additionalProperties": False,
-                            "properties": {
-                                "column": {"type": "string"},
-                                "value": {"type": "string"}
-                            }
+                    "values": {"$ref": "#/definitions/column_values"},
+                }
+            }
+        },
+        "column_values": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": True,
+            "items": {
+                "type": "object",
+                "required": ["column", "value"],
+                "additionalProperties": False,
+                "properties": {
+                    "column": {"type": "string"},
+                    "value": {"type": "string"}
+                }
+            }
+        },
+        "expected": {
+            "type": "object",
+            "required": ["data"],
+            "additionalProperties": False,
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": True,
+                    "items": {
+                        "type": "object",
+                        "required": ["target"],
+                        "additionalProperties": False,
+                        "properties": {
+                            "target": {"type": "string"},
+                            "table": {"type": "string"},
+                            "by": {"type": "array", "items": {"type": "string"}}
                         }
                     }
                 }
             }
-        }
 
+        },
     },
     "type": "object",
     "properties": {
@@ -103,20 +126,7 @@ SCHEMA={
                 "addtionalProperties": False,
                 "properties": {
                     "source": {"type": "string"},
-                    "defaults": {
-                        "type": "array",
-                        "minItems": 1,
-                        "uniqueItems": True,
-                        "items": {
-                            "type": "object",
-                            "required": ["column", "value"],
-                            "additionalProperties": False,
-                            "properties": {
-                                "column": {"type": "string"},
-                                "value": {"type": "string"}
-                            }
-                        }
-                    },
+                    "defaults": {"$ref": "#/definitions/column_values"},
                     "identifier_map": {"$ref": "#/definitions/identifier_map"}
                 }
             }
@@ -190,28 +200,7 @@ SCHEMA={
                                         "data": {"$ref": "#/definitions/factory_data"}
                                     }
                                 },
-                                "expected": {
-                                    "type": "object",
-                                    "required": ["data"],
-                                    "additionalProperties": False,
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "minItems": 1,
-                                            "uniqueItems": True,
-                                            "items": {
-                                                "type": "object",
-                                                "required": ["target"],
-                                                "additionalProperties": False,
-                                                "properties": {
-                                                    "target": {"type": "string"},
-                                                    "table": {"type": "string"},
-                                                    "by": {"type": "array", "items": {"type": "string"}}
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                                "expected": {"$ref": "#/definitions/expected"}
                             }
                         }
                     }
@@ -224,52 +213,42 @@ SCHEMA={
     "additionalProperties": False
 }
 
-class InvalidSpecificationError(Exception): pass
-class _Api:
-    def __init__(self):
-        self.spec = {}
+class Api:
+    def __init__(self, json_spec):
+        self.spec = self._parse_sepc(json_spec)
+
+    def parse_spec(self, json_spec):
+        'Converts the raw JSON spec into internal objects used to generate source data and run assertions'
+        jsonschema.validate(json_spec, SCHEMA)
+
+        if 'identifiers' in json_spec:
+            self.spec['identifiers'] = self._parse_spec_identifiers(json_spec['identifiers'])
+
+        if 'sources' in json_spec:
+            self.spec['sources'] = self._parse_spec_sources(json_spec['sources'])
+
+
+    def generate_sources(self):
+        'Used to generate all source data that will be passed back to the user'
+        raise NotImplementedError
+
+    def load_actuals(self):
+        'Used to load data containing the actual results to be compared with expectations'
+        raise NotImplementedError
+
+    def run_assertions(self):
+        'Runs all of the assertions defined in the spec against the actual data'
+        raise NotImplementedError
 
     @staticmethod
-    def _validate_spec(spec):
-        unknown_keys = set(spec.keys()) - {
-            'version', 'identifiers', 'sources', 'targets', 'factories', 'scenarios', 'metadata'
-        }
-        if len(unknown_keys) > 0:
-            raise InvalidSpecificationError('Unknown keys found in test spec: {unknown_keys}')
-
-        if 'version' not in spec:
-            raise InvalidSpecificationError('Required key "version" not found')
-
-        if spec['version'] != '0.1':
-            raise InvalidSpecificationError('version must be "0.1"')
-
-        if 'sources' not in spec:
-            raise InvalidSpecificationError('At least one source is required')
-
-        if 'scenarios' not in spec:
-            raise InvalidSpecificationError('At least one scenario is required')
-        #TODO: more
-
-    def load_spec(self, raw_spec):
-        self._validate_spec(raw_spec)
-        self.spec['version'] = raw_spec['version']
-
-        if 'identifiers' in raw_spec:
-            self.spec['identifiers'] = self._load_spec_identifiers(raw_spec['identifiers'])
-
-        if 'sources' in raw_spec:
-            self.spec['sources'] = self._load_spec_sources(raw_spec['sources'])
-
-
-    @staticmethod
-    def _load_spec_identifiers(raw_spec_identifiers):
+    def _parse_spec_identifiers(raw_spec_identifiers):
         spec_identifiers = {}
         for identifier_name, attributes in raw_spec_identifiers.items():
             spec_identifiers[identifier_name] = Identifier(attributes)
         return spec_identifiers
 
     @staticmethod
-    def _load_spec_sources(raw_spec_sources):
+    def _parse_spec_sources(raw_spec_sources):
         spec_sources = {}
         for source_name, attributes in raw_spec_sources.items():
             spec_sources[source_name] = Source(
