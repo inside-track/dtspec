@@ -145,3 +145,60 @@ def test_factory_parents_must_exist(canonical_spec):
     })
     with pytest.raises(dts.api.ApiReferentialError):
         dts.api.Api(error_spec)
+
+def test_scenarios_are_defined(api):
+    expected = {
+        'DenormalizingStudentClasses': dts.api.Scenario
+    }
+    actual = {k:v.__class__ for k,v in api.spec['scenarios'].items()}
+    assert actual == expected
+
+def test_scenarios_cannot_be_duplicated(canonical_spec):
+    error_spec = copy.deepcopy(canonical_spec)
+    error_spec['scenarios'].append(copy.deepcopy(error_spec['scenarios'][0]))
+    error_spec['scenarios'][-1]['description'] = 'Otherwise jsonschema complains of pure dupe'
+    with pytest.raises(dts.api.ApiDuplicateError):
+        dts.api.Api(error_spec)
+
+def test_scenarios_have_cases(api):
+    expected = {
+        'BasicDenormalization': dts.api.Case,
+        'MissingClasses': dts.api.Case,
+        'MultipleClasses': dts.api.Case,
+    }
+    actual = {k:v.__class__ for k,v in api.spec['scenarios']['DenormalizingStudentClasses'].cases.items()}
+    assert actual == expected
+
+def test_scenario_cases_cannot_be_duplicated(canonical_spec):
+    error_spec = copy.deepcopy(canonical_spec)
+    error_spec['scenarios'][0]['cases'].append(copy.deepcopy(
+        error_spec['scenarios'][0]['cases'][0]
+    ))
+    error_spec['scenarios'][0]['cases'][-1]['description'] = 'Otherwise jsonschema complains of pure dupe'
+    with pytest.raises(dts.api.ApiDuplicateError):
+        dts.api.Api(error_spec)
+
+def test_cases_inherit_from_scenario_factories(api):
+    case = api.spec['scenarios']['DenormalizingStudentClasses'].cases['BasicDenormalization']
+
+    expected = {'itk_api.students', 'itk_api.schools', 'itk_api.classes'}
+    actual = case.factory.data.keys()
+    assert actual == expected
+
+# WIP - just have some whitespace to clean up
+# def test_cases_can_customize_factories(api):
+#     case = api.spec['scenarios']['DenormalizingStudentClasses'].cases['MissingClasses']
+
+#     expected = '''
+#         | student_id | name            |
+#         | -          | -               |
+#         | stu1       | Applied Stabby  |
+#         | stu2       | Good Spells     |
+#     '''
+#     actual = case.factory.data['itk_api.classes']['table']
+#     assert actual == expected
+
+# TODO: def test_cases_have_expectations(api):
+
+
+# Rename this file to test_api_specs.  Then create another one for testing api function

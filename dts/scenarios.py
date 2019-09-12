@@ -10,8 +10,7 @@ from dts.factories import Factory
 class DuplicateCaseError(Exception): pass
 
 class Scenario:
-    def __init__(self, factories=None, targets=None, cases=None):
-        self.targets = targets or {}
+    def __init__(self, cases=None):
         self.cases = cases or {}
 
     def generate(self):
@@ -19,7 +18,7 @@ class Scenario:
             case.factory.generate(id(case))
 
 
-# TODO: This might just be a simplenamespace
+# TODO: This might just be a simplenamespace - probably not.  I think this will be used heavily in assertions
 class Case:
     def __init__(self, factory=None, expected=None):
         self.factory = factory

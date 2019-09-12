@@ -226,17 +226,11 @@ class Api:
         'Converts the raw JSON spec into internal objects used to generate source data and run assertions'
         jsonschema.validate(json_spec, SCHEMA)
 
-        if 'identifiers' in json_spec:
-            self.spec['identifiers'] = self._parse_spec_identifiers(json_spec['identifiers'])
-
-        if 'sources' in json_spec:
-            self.spec['sources'] = self._parse_spec_sources(json_spec['sources'])
-
-        if 'targets' in json_spec:
-            self.spec['targets'] = self._parse_spec_targets(json_spec['targets'])
-
-        if 'factories' in json_spec:
-            self.spec['factories'] = self._parse_spec_factories(json_spec['factories'])
+        self._parse_spec_identifiers(json_spec)
+        self._parse_spec_sources(json_spec)
+        self._parse_spec_targets(json_spec)
+        self._parse_spec_factories(json_spec)
+        self._parse_spec_scenarios(json_spec)
 
 
     def generate_sources(self):
@@ -251,14 +245,14 @@ class Api:
         'Runs all of the assertions defined in the spec against the actual data'
         raise NotImplementedError
 
-    @staticmethod
-    def _parse_spec_identifiers(json_spec):
-        spec = {}
-        for identifier_json in json_spec:
+    def _parse_spec_identifiers(self, json_spec):
+        self.spec['identifiers'] = {}
+
+        for identifier_json in json_spec.get('identifiers', []):
             identifier_name = identifier_json['identifier']
             attr_list = identifier_json['attributes']
 
-            if identifier_name in spec:
+            if identifier_name in self.spec['identifiers']:
                 raise ApiDuplicateError(f'Duplicate identifiers detected: {identifier_name}')
 
             attributes = {}
@@ -267,12 +261,12 @@ class Api:
                 attr_args = {k:v for k,v in attr.items() if k != 'field'}
                 attributes[attr_name] = attr_args
 
-            spec[identifier_name] = Identifier(attributes)
-        return spec
+            self.spec['identifiers'][identifier_name] = Identifier(attributes)
+
 
     def _parse_spec_sources(self, json_spec):
-        spec = {}
-        for source_json in json_spec:
+        self.spec['sources'] = {}
+        for source_json in json_spec['sources']:
             source_name = source_json['source']
 
             defaults = {}
@@ -292,53 +286,88 @@ class Api:
                 }
 
 
-            spec[source_name] = Source(
+            self.spec['sources'][source_name] = Source(
                 defaults=defaults,
                 id_mapping=id_mapping
             )
-        return spec
 
     def _parse_spec_targets(self, json_spec):
         'not yet implemented'
-        return {}
+        pass
 
     def _parse_spec_factories(self, json_spec):
-        spec = {}
-        for factory_json in json_spec:
+        self.spec['factories'] = {}
+        for factory_json in json_spec.get('factories', []):
             factory_name = factory_json['factory']
             factory_data = self._parse_spec_factory_data(factory_json['data'], factory_name)
 
-            if factory_name in spec:
+            if factory_name in self.spec['factories'].keys():
                 raise ApiDuplicateError(f'Duplicate factories detected: {factory_name}')
 
 
             inherit_from = []
             for parent_factory in factory_json.get('parents', []):
-                if parent_factory not in spec.keys():
+                if parent_factory not in self.spec['factories'].keys():
                     raise ApiReferentialError(
                         f'Unable to find parent factory "{parent_factory}" referenced in factory "{factory_name}"'
                     )
 
-                inherit_from.append(spec[parent_factory])
+                inherit_from.append(self.spec['factories'][parent_factory])
 
-            spec[factory_name] = Factory(
+            self.spec['factories'][factory_name] = Factory(
                 data=factory_data,
                 inherit_from=inherit_from,
                 sources=self.spec['sources']
             )
-        return spec
 
     def _parse_spec_factory_data(self, json_spec, factory_name):
         spec = {}
-        for data in json_spec:
-            source_name = data['source']
+        for data_json in json_spec:
+            source_name = data_json['source']
             if source_name not in self.spec['sources'].keys():
                 raise ApiReferentialError(
                     f'Unable to find source "{source_name}" referenced in factory "{factory_name}"'
                 )
             spec[source_name] = {
-                'table': data.get('table', None),
-                'values': {value['column']: value['value'] for value in data.get('values', [])}
+                'table': data_json.get('table', None),
+                'values': {value['column']: value['value'] for value in data_json.get('values', [])}
             }
 
         return spec
+
+    def _parse_spec_scenarios(self, json_spec):
+        self.spec['scenarios'] = {}
+        for scenario_json in json_spec['scenarios']:
+            scenario_name = scenario_json['scenario']
+
+            if scenario_name in self.spec['scenarios'].keys():
+                raise ApiDuplicateError(f'Duplicate scenarios detected: {scenario_name}')
+
+            self.spec['scenarios'][scenario_name] = Scenario(
+                cases=self._parse_spec_cases(
+                    scenario_json['cases'],
+                    scenario_json.get('factories', []),
+                    scenario_name
+                )
+            )
+
+    def _parse_spec_cases(self, cases_json, scenario_factories, scenario_name):
+        cases = {}
+        for case_json in cases_json:
+            case_name = case_json['case']
+            if case_name in cases:
+                raise ApiDuplicateError(f'Duplicate cases detected in scenario "{scenario_name}": {case_name}')
+
+            case_data = self._parse_spec_factory_data(
+                case_json.get('data', []),
+                f'Case Factory: {case_name}'
+            )
+            cases[case_name] = Case(
+                factory=Factory(
+                    sources=self.spec['sources'],
+                    inherit_from=[self.spec['factories'][name] for name in scenario_factories],
+                    data=case_data
+                ),
+                expected=[]
+            )
+        return cases
