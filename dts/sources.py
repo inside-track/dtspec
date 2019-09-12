@@ -1,15 +1,24 @@
+import json
 import uuid
 
 import pandas as pd
+from pandas.util.testing import assert_frame_equal
 # A collection of sources is the primary output of the data seed stage
 # the source will keep track of which records belong to which cases
 # every time a case requests data from a source, those records will stack onto the existing records
 
+def _frame_is_equal(df1, df2):
+    try:
+        assert_frame_equal(df1, df2)
+    except AssertionError as err:
+        return False
+    return True
 
 # what is the relationship between factories and sources?
 #   a factory provides data example to a source that then stacks it
 #   the factory will include the case that it is being used it
 class IdentifierWithoutColumnError(Exception): pass
+class CannotStackStaticSourceError(Exception): pass
 
 class Source:
     def __init__(self, defaults=None, id_mapping=None):
@@ -22,8 +31,15 @@ class Source:
         'values override defaults at stack time'
 
         w_defaults_df = self._add_defaults(data, case, values)
-        translated_df = self._translate_identifiers(w_defaults_df, case)
-        self.data = pd.concat([self.data, translated_df]).reset_index(drop=True)
+        if self.id_mapping:
+            translated_df = self._translate_identifiers(w_defaults_df, case)
+            self.data = pd.concat([self.data, translated_df], sort=False).reset_index(drop=True)
+        else:
+            if len(self.data) > 0 and not _frame_is_equal(self.data, w_defaults_df):
+                raise CannotStackStaticSourceError(
+                    f'In case f"{case}", attempting to stack data onto source without identifiers:\n {data}'
+                )
+            self.data = w_defaults_df
 
     def _add_defaults(self, df, case, values):
         default_values = {**(self.defaults or {}), **(values or {})}
@@ -49,7 +65,7 @@ class Source:
         missing_columns = set(self.id_mapping.keys()) - set(df.columns)
         if len(missing_columns) > 0:
             raise IdentifierWithoutColumnError(
-                'Data source is missing columns corresponding to identifier attributes: {}'.format(missing_columns)
+                f'In case "{case}", data source is missing columns corresponding to identifier attributes: {missing_columns}'
             )
 
 
@@ -59,5 +75,5 @@ class Source:
             )
         return df
 
-    def to_json(self, orient='records'):
-        return self.data.to_json(orient=orient)
+    def serialize(self, orient='records'):
+        return json.loads(self.data.to_json(orient=orient))

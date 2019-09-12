@@ -108,8 +108,8 @@ def test_data_converts_to_json(simple_source, identifiers):
         ''')
     )
 
-    actual = simple_source.to_json()
-    expected = json.dumps([
+    actual = simple_source.serialize()
+    expected = [
         {
             'id': identifiers['student'].record(case='TestCase', named_id='s1')['id'],
             'first_name': 'Bob'
@@ -118,7 +118,7 @@ def test_data_converts_to_json(simple_source, identifiers):
             'id': identifiers['student'].record(case='TestCase', named_id='s2')['id'],
             'first_name': 'Nancy'
         },
-    ], separators=(',', ':'))
+    ]
 
     assert actual == expected
 
@@ -379,5 +379,70 @@ def test_all_identifying_columns_must_be_present(source_w_multiple_ids, identifi
             | -  | -           |
             | s1 | Bob         |
             | s2 | Nancy       |
+            ''')
+        )
+
+
+def test_source_without_identifier_generates_data():
+    table = '''
+        | date       | season      |
+        | -          | -           |
+        | 2001-09-08 | Fall 2001   |
+        | 2002-01-09 | Spring 2002 |
+    '''
+
+    source = Source()
+    source.stack(
+        'TestCase',
+        dts.data.markdown_to_df(table)
+    )
+
+    actual = source.data
+    expected = dts.data.markdown_to_df(table)
+    assert_frame_equal(actual, expected)
+
+def test_source_without_identifer_not_stacked():
+    table = '''
+        | date       | season      |
+        | -          | -           |
+        | 2001-09-08 | Fall 2001   |
+        | 2002-01-09 | Spring 2002 |
+    '''
+
+    source = Source()
+    source.stack(
+        'TestCase',
+        dts.data.markdown_to_df(table)
+    )
+    source.stack(
+        'TestCase',
+        dts.data.markdown_to_df(table)
+    )
+
+    actual = source.data
+    expected = dts.data.markdown_to_df(table)
+    assert_frame_equal(actual, expected)
+
+
+def test_source_without_identifer_raises_if_data_changes():
+    source = Source()
+    source.stack(
+        'TestCase',
+        dts.data.markdown_to_df('''
+            | date       | season      |
+            | -          | -           |
+            | 2001-09-08 | Fall 2001   |
+            | 2002-01-09 | Spring 2002 |
+        ''')
+    )
+
+    with pytest.raises(dts.sources.CannotStackStaticSourceError):
+        source.stack(
+            'TestCase',
+            dts.data.markdown_to_df('''
+                | date       | season      |
+                | -          | -           |
+                | 2002-06-01 | Summer 2002 |
+                | 2002-09-07 | Fall 2002   |
             ''')
         )

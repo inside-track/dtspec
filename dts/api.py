@@ -235,7 +235,12 @@ class Api:
 
     def generate_sources(self):
         'Used to generate all source data that will be passed back to the user'
-        raise NotImplementedError
+        for _scenario_name, scenario in self.spec['scenarios'].items():
+            scenario.generate()
+
+
+    def source_data(self):
+        return {name: source.serialize() for name, source in self.spec['sources'].items()}
 
     def load_actuals(self):
         'Used to load data containing the actual results to be compared with expectations'

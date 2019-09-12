@@ -86,10 +86,19 @@ sources:
         identifier:
           name: students
           attribute: id
+      - column: uuid
+        identifier:
+          name: students
+          attribute: uuid
       - column: external_id
         identifier:
           name: students
+          attribute: external_id
+      - column: school_id
+        identifier:
+          name: schools
           attribute: id
+
 
   - source: raw.schools
     identifier_map:
@@ -99,9 +108,16 @@ sources:
           attribute: id
 
   - source: raw.classes
+    identifier_map:
+      - column: student_id
+        identifier:
+          name: students
+          attribute: id
     defaults:
       - column: name
         value: Some Class
+      - column: start_date
+        value: '2002-06-01'
 
   # Sources don't need to have identifiers if they won't be used to identify target records
   #  Sources without identifiers don't stack, the factory that generates them is only run once.
@@ -111,7 +127,7 @@ sources:
 targets:
   - target: analytics.student_classes
     identifier_map:
-      - column: student_id
+      - column: external_id
         identifier:
           name: students
           attribute: external_id
@@ -123,12 +139,12 @@ factories:
     data:
       - source: raw.students
         table: |
-          | id   | uuid | school_id | first_name |
-          | -    | -    | -         | -          |
-          | stu1 | stu1 | sch1      | Buffy      |
-          | stu2 | stu2 | sch1      | Willow     |
-          | stu3 | stu3 | sch2      | Bill       |
-          | stu4 | stu4 | sch2      | Ted        |
+          | id   | uuid | external_id | school_id | first_name |
+          | -    | -    | -           | -         | -          |
+          | stu1 | stu1 | stu1        | sch1      | Buffy      |
+          | stu2 | stu2 | stu2        | sch1      | Willow     |
+          | stu3 | stu3 | stu3        | sch2      | Bill       |
+          | stu4 | stu4 | stu4        | sch2      | Ted        |
         values:
           - column: last_name
             value: Unknown
@@ -182,15 +198,15 @@ scenarios:
           data:
             - target: analytics.student_classes
               table: |
-                | student_id | first_name | school_name | class_name      | season      |
-                | -          | -          | -           | -               | -           |
-                | stu1       | Buffy      | Sunnydale   | Applied Stabby  | Fall 2001   |
-                | stu2       | Willow     | Sunnydale   | Good Spells     | Spring 2002 |
-                | stu3       | Bill       | San Dimas   | Station         | Fall 2002   |
-                | stu4       | Ted        | San Dimas   | Being Excellent | Fall 2002   |
+                | external_id | first_name | school_name | class_name      | season      |
+                | -           | -          | -           | -               | -           |
+                | stu1        | Buffy      | Sunnydale   | Applied Stabby  | Fall 2001   |
+                | stu2        | Willow     | Sunnydale   | Good Spells     | Spring 2002 |
+                | stu3        | Bill       | San Dimas   | Station         | Fall 2002   |
+                | stu4        | Ted        | San Dimas   | Being Excellent | Fall 2002   |
               # Order not always predictable.  Use the by clause to order prior to comparison
               by:
-                - student_id
+                - external_id
 
 
       - case: MissingClasses
@@ -209,12 +225,12 @@ scenarios:
             - target: analytics.student_classes
               # If a column isn't included in expected data, it's just not compared
               table: |
-                | student_id | first_name | school_name | class_name      |
-                | -          | -          | -           | -               |
-                | stu1       | Buffy      | Sunnydale   | Applied Stabby  |
-                | stu2       | Willow     | Sunnydale   | Good Spells     |
+                | external_id | first_name | school_name | class_name      |
+                | -           | -          | -           | -               |
+                | stu1        | Buffy      | Sunnydale   | Applied Stabby  |
+                | stu2        | Willow     | Sunnydale   | Good Spells     |
               by:
-                - student_id
+                - external_id
 
       - case: MultipleClasses
         description: Students with multiple classes have multiple records
@@ -235,15 +251,15 @@ scenarios:
           data:
             - target: analytics.student_classes
               table: |
-                | student_id | first_name | school_name | class_name      |
-                | -          | -          | -           | -               |
-                | stu1       | Buffy      | Sunnydale   | Applied Stabby  |
-                | stu2       | Willow     | Sunnydale   | Good Spells     |
-                | stu2       | Willow     | Sunnydale   | Season 6 Spells |
-                | stu3       | Bill       | San Dimas   | Station         |
-                | stu4       | Ted        | San Dimas   | Being Excellent |
-                | stu4       | Ted        | San Dimas   | Station         |
+                | external_id | first_name | school_name | class_name      |
+                | -           | -          | -           | -               |
+                | stu1        | Buffy      | Sunnydale   | Applied Stabby  |
+                | stu2        | Willow     | Sunnydale   | Good Spells     |
+                | stu2        | Willow     | Sunnydale   | Season 6 Spells |
+                | stu3        | Bill       | San Dimas   | Station         |
+                | stu4        | Ted        | San Dimas   | Being Excellent |
+                | stu4        | Ted        | San Dimas   | Station         |
               # Order not always predictable.  Use the by clause to order prior to comparison
               by:
-                - student_id
+                - external_id
                 - class_name
