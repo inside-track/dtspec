@@ -359,7 +359,7 @@ class Api:
                 raise ApiDuplicateError(f'Duplicate cases detected in scenario "{scenario_name}": {case_name}')
 
             case_data = self._parse_spec_factory_data(
-                case_json.get('data', []),
+                case_json.get('factory', {}).get('data', []),
                 f'Case Factory: {case_name}'
             )
             cases[case_name] = Case(

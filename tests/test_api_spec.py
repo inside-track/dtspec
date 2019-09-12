@@ -45,21 +45,22 @@ def test_identifiers_cannot_be_duplicated(canonical_spec):
 
 def test_sources_are_defined(api):
     expected = {
-        'itk_api.students': dts.api.Source,
-        'itk_api.schools': dts.api.Source,
-        'itk_api.classes': dts.api.dts.api.Source
+        'raw.students': dts.api.Source,
+        'raw.schools': dts.api.Source,
+        'raw.classes': dts.api.dts.api.Source,
+        'analytics.dim_date': dts.api.dts.api.Source,
     }
     actual = {k:v.__class__ for k,v in api.spec['sources'].items()}
     assert actual == expected
 
 def test_sources_can_have_defaults(api):
     expected = {'first_name': 'Bob'}
-    actual = api.spec['sources']['itk_api.students'].defaults
+    actual = api.spec['sources']['raw.students'].defaults
     assert actual == expected
 
 def test_sources_can_have_identifier_map(api):
     expected = api.spec['identifiers']['students']
-    actual = api.spec['sources']['itk_api.students'].id_mapping['id']['identifier']
+    actual = api.spec['sources']['raw.students'].id_mapping['id']['identifier']
     assert actual == expected
 
 def test_source_identifiers_must_exist(canonical_spec):
@@ -77,17 +78,18 @@ def test_factories_are_defined(api):
     expected = {
         'CanonicalStudent': dts.api.Factory,
         'StudentWithClasses': dts.api.Factory,
+        'DateDimension': dts.api.Factory,
     }
     actual = {k:v.__class__ for k,v in api.spec['factories'].items()}
     assert actual == expected
 
 def test_factories_can_have_data_sources(api):
-    expected = {'itk_api.students', 'itk_api.schools'}
+    expected = {'raw.students', 'raw.schools'}
     actual = api.spec['factories']['CanonicalStudent'].data.keys()
     assert actual == expected
 
 def test_factories_inherit_from_parents(api):
-    expected = {'itk_api.students', 'itk_api.schools', 'itk_api.classes'}
+    expected = {'raw.students', 'raw.schools', 'raw.classes'}
     actual = api.spec['factories']['StudentWithClasses'].data.keys()
     assert actual == expected
 
@@ -97,7 +99,7 @@ def test_factories_cannot_be_duplicated(canonical_spec):
         'factory': 'CanonicalStudent',
         'data': [
             {
-                'source': 'itk_api.students',
+                'source': 'raw.students',
                 'table': '''
                     | student_id |
                     | -          |
@@ -134,7 +136,7 @@ def test_factory_parents_must_exist(canonical_spec):
         'parents': ['NotAFactory'],
         'data': [
             {
-                'source': 'itk_api.students',
+                'source': 'raw.students',
                 'table': '''
                     | student_id |
                     | -          |
@@ -181,24 +183,20 @@ def test_scenario_cases_cannot_be_duplicated(canonical_spec):
 def test_cases_inherit_from_scenario_factories(api):
     case = api.spec['scenarios']['DenormalizingStudentClasses'].cases['BasicDenormalization']
 
-    expected = {'itk_api.students', 'itk_api.schools', 'itk_api.classes'}
+    expected = {'raw.students', 'raw.schools', 'raw.classes', 'analytics.dim_date'}
     actual = case.factory.data.keys()
     assert actual == expected
 
-# WIP - just have some whitespace to clean up
-# def test_cases_can_customize_factories(api):
-#     case = api.spec['scenarios']['DenormalizingStudentClasses'].cases['MissingClasses']
+def test_cases_can_customize_factories(api):
+    case = api.spec['scenarios']['DenormalizingStudentClasses'].cases['MissingClasses']
 
-#     expected = '''
-#         | student_id | name            |
-#         | -          | -               |
-#         | stu1       | Applied Stabby  |
-#         | stu2       | Good Spells     |
-#     '''
-#     actual = case.factory.data['itk_api.classes']['table']
-#     assert actual == expected
+    expected = '\n'.join([v.strip() for v in '''
+        | student_id | name            |
+        | -          | -               |
+        | stu1       | Applied Stabby  |
+        | stu2       | Good Spells     |
+    '''.split('\n')[1:]])
+    actual = case.factory.data['raw.classes']['table']
+    assert actual == expected
 
 # TODO: def test_cases_have_expectations(api):
-
-
-# Rename this file to test_api_specs.  Then create another one for testing api function

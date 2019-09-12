@@ -74,7 +74,7 @@ identifiers:
 sources:
   # Give each source a name.  User must map them onto their own names.
   # Here's an example of a schema.table source that would easily map to a Redshift table
-  - source: itk_api.students
+  - source: raw.students
     # Unless otherwise specified by a factory, sources can be populated with default values
     defaults:
       - column: first_name
@@ -91,21 +91,25 @@ sources:
           name: students
           attribute: id
 
-  - source: itk_api.schools
+  - source: raw.schools
     identifier_map:
       - column: id
         identifier:
           name: schools
           attribute: id
 
-  # Sources don't need to have identifiers if they won't be used to identify target records
-  - source: itk_api.classes
+  - source: raw.classes
     defaults:
       - column: name
         value: Some Class
 
+  # Sources don't need to have identifiers if they won't be used to identify target records
+  #  Sources without identifiers don't stack, the factory that generates them is only run once.
+  - source: analytics.dim_date
+
+
 targets:
-  - target: denormalized_students
+  - target: analytics.student_classes
     identifier_map:
       - column: student_id
         identifier:
@@ -117,19 +121,19 @@ factories:
     description: Simple easy student, tied to a school, no classes
 
     data:
-      - source: itk_api.students
+      - source: raw.students
         table: |
-          | id   | uuid   | school_id   | first_name |
-          | -    | -      | -           | -          |
-          | stu1 | stu1   | sch1        | Buffy      |
-          | stu2 | stu2   | sch1        | Willow     |
-          | stu3 | stu3   | sch2        | Bill       |
-          | stu4 | stu4   | sch2        | Ted        |
+          | id   | uuid | school_id | first_name |
+          | -    | -    | -         | -          |
+          | stu1 | stu1 | sch1      | Buffy      |
+          | stu2 | stu2 | sch1      | Willow     |
+          | stu3 | stu3 | sch2      | Bill       |
+          | stu4 | stu4 | sch2      | Ted        |
         values:
           - column: last_name
             value: Unknown
 
-      - source: itk_api.schools
+      - source: raw.schools
         table: |
           | id   | name      |
           | -    | -         |
@@ -142,14 +146,26 @@ factories:
       - CanonicalStudent
 
     data:
-      - source: itk_api.classes
+      - source: raw.classes
         table: |
-          | student_id | name            |
-          | -          | -               |
-          | stu1       | Applied Stabby  |
-          | stu2       | Good Spells     |
-          | stu3       | Station         |
-          | stu4       | Being Excellent |
+          | student_id | name            | start_date |
+          | -          | -               | -          |
+          | stu1       | Applied Stabby  | 2001-09-08 |
+          | stu2       | Good Spells     | 2002-01-09 |
+          | stu3       | Station         | 2002-09-07 |
+          | stu4       | Being Excellent | 2002-09-07 |
+
+  - factory: DateDimension
+    data:
+      - source: analytics.dim_date
+        table: |
+          | date       | season      |
+          | -          | -           |
+          | 2001-09-08 | Fall 2001   |
+          | 2002-01-09 | Spring 2002 |
+          | 2002-06-01 | Summer 2002 |
+          | 2002-09-07 | Fall 2002   |
+
 
 scenarios:
   - scenario: DenormalizingStudentClasses
@@ -157,20 +173,21 @@ scenarios:
     # implies that all cases in this scenario will inherit from this factory
     factories:
       - StudentWithClasses
+      - DateDimension
 
     cases:
       - case: BasicDenormalization
         description: A canonical example of denormalization
         expected:
           data:
-            - target: denormalized_students
+            - target: analytics.student_classes
               table: |
-                | student_id | first_name | school_name | class_name      |
-                | -          | -          | -           | -               |
-                | stu1       | Buffy      | Sunnydale   | Applied Stabby  |
-                | stu2       | Willow     | Sunnydale   | Good Spells     |
-                | stu3       | Bill       | San Dimas   | Station         |
-                | stu4       | Ted        | San Dimas   | Being Excellent |
+                | student_id | first_name | school_name | class_name      | season      |
+                | -          | -          | -           | -               | -           |
+                | stu1       | Buffy      | Sunnydale   | Applied Stabby  | Fall 2001   |
+                | stu2       | Willow     | Sunnydale   | Good Spells     | Spring 2002 |
+                | stu3       | Bill       | San Dimas   | Station         | Fall 2002   |
+                | stu4       | Ted        | San Dimas   | Being Excellent | Fall 2002   |
               # Order not always predictable.  Use the by clause to order prior to comparison
               by:
                 - student_id
@@ -180,7 +197,7 @@ scenarios:
         description: Students without classes are excluded from denormalized table
         factory:
           data:
-            - source: itk_api.classes
+            - source: raw.classes
               table: |
                 | student_id | name            |
                 | -          | -               |
@@ -189,7 +206,8 @@ scenarios:
 
         expected:
           data:
-            - target: denormalized_students
+            - target: analytics.student_classes
+              # If a column isn't included in expected data, it's just not compared
               table: |
                 | student_id | first_name | school_name | class_name      |
                 | -          | -          | -           | -               |
@@ -202,7 +220,7 @@ scenarios:
         description: Students with multiple classes have multiple records
         factory:
           data:
-            - source: itk_api.classes
+            - source: raw.classes
               table: |
                 | student_id | name            |
                 | -          | -               |
@@ -215,7 +233,7 @@ scenarios:
 
         expected:
           data:
-            - target: denormalized_students
+            - target: analytics.student_classes
               table: |
                 | student_id | first_name | school_name | class_name      |
                 | -          | -          | -           | -               |
