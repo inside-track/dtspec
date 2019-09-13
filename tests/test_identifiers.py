@@ -58,3 +58,15 @@ def test_generators_fail_when_passed_bad_args():
         dts.identifiers.Identifier({
             'external_id': {'generator': 'unique_string', 'bad_arg': 'TestPrefix-'}
         })
+
+def test_find_the_named_id(student):
+    expected = {
+        student.record(case='TestCase', named_id=name)['external_id']: name
+        for name in ['stuA', 'stuB', 'stuC']
+    }
+    actual = {
+        raw_id: student.find('external_id', raw_id)
+        for raw_id in expected.keys()
+    }
+
+    assert actual == expected

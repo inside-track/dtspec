@@ -76,3 +76,9 @@ class Identifier:
                 self.cases[case].named_ids[named_id][attr] = generator()
 
         return self.cases[case].named_ids[named_id]
+
+    def find(self, attribute, raw_id):
+        for case_name, case in self.cases.items():
+            for named_id, attributes in case.named_ids.items():
+                if attributes[attribute] == raw_id:
+                    return named_id
