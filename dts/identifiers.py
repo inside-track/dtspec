@@ -54,7 +54,7 @@ class IdGenerators:
     def uuid():
         return lambda: str(uuid.uuid4())
 
-
+class UnableToFindNamedIdError(Exception): pass
 class Identifier:
     def __init__(self, attributes):
         self.attributes = attributes
@@ -77,8 +77,17 @@ class Identifier:
 
         return self.cases[case].named_ids[named_id]
 
+    # TODO: raise an error if a record belongs to more than one case?
     def find(self, attribute, raw_id):
+        'Given an attribute and a raw id, return named attribute and case'
+        found = SimpleNamespace(named_id=None, case=None)
         for case_name, case in self.cases.items():
             for named_id, attributes in case.named_ids.items():
                 if attributes[attribute] == raw_id:
-                    return named_id
+                    found.named_id = named_id
+                    found.case = case_name
+                    return found
+
+        raise UnableToFindNamedIdError(
+            f'Unable to find named identifier for attribute "{attribute}" and value "{raw_id}"'
+        )

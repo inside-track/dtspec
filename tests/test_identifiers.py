@@ -65,7 +65,19 @@ def test_find_the_named_id(student):
         for name in ['stuA', 'stuB', 'stuC']
     }
     actual = {
-        raw_id: student.find('external_id', raw_id)
+        raw_id: student.find('external_id', raw_id).named_id
+        for raw_id in expected.keys()
+    }
+
+    assert actual == expected
+
+def test_find_the_case(student):
+    expected = {
+        student.record(case=case, named_id='stuB')['external_id']: case
+        for case in ['TestCase1', 'TestCase2', 'TestCase3']
+    }
+    actual = {
+        raw_id: student.find('external_id', raw_id).case
         for raw_id in expected.keys()
     }
 

@@ -1,3 +1,4 @@
+import copy
 import pytest
 
 import dts.identifiers
@@ -44,34 +45,40 @@ def simple_data(stu):
         {'id': stu['c2stu2'], 'first_name': 'Willow'},
     ]
 
-def test_actual_data_is_loaded(simple_target, simple_data, stu):
+def test_actual_data_is_loaded_ids_translated(simple_target, simple_data):
     simple_target.load_actual(simple_data)
 
-    actual = simple_target.data
+    actual = simple_target.data.drop(columns='__dts_case__')
     expected = markdown_to_df(
         '''
-        | id            | first_name |
-        | -             | -          |
-        | {stu[c1stu1]} | Buffy      |
-        | {stu[c1stu2]} | Willow     |
-        | {stu[c2stu1]} | Faith      |
-        | {stu[c2stu2]} | Willow     |
-        '''.format(stu=stu)
+        | id   | first_name |
+        | -    | -          |
+        | stu1 | Buffy      |
+        | stu2 | Willow     |
+        | stu1 | Faith      |
+        | stu2 | Willow     |
+        '''
     )
 
     assert_frame_equal(actual, expected)
 
-def test_target_can_be_split_into_case(simple_target, simple_data, stu):
+def test_target_can_be_split_into_case(simple_target, simple_data):
     simple_target.load_actual(simple_data)
 
     actual = simple_target.case_data('TestCase2')
     expected = markdown_to_df(
         '''
-        | id            | first_name |
-        | -             | -          |
-        | {stu[c2stu1]} | Faith      |
-        | {stu[c2stu2]} | Willow     |
-        '''.format(stu=stu)
+        | id   | first_name |
+        | -    | -          |
+        | stu1 | Faith      |
+        | stu2 | Willow     |
+        '''
     )
 
     assert_frame_equal(actual, expected)
+
+def test_raises_error_if_raw_id_not_found(simple_target, simple_data):
+    bad_data = copy.deepcopy(simple_data)
+    bad_data[1]['id'] = 123456789
+    with pytest.raises(dts.identifiers.UnableToFindNamedIdError):
+        simple_target.load_actual(bad_data)
