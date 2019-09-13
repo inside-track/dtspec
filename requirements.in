@@ -2,3 +2,6 @@ pyyaml
 pytest
 pandas
 jsonschema
+invoke
+pylint
+black

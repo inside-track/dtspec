@@ -2,14 +2,16 @@ import pandas.util.testing
 
 from dts.core import markdown_to_df
 
+
 def assert_frame_equal(actual, expected, **kwargs):
     try:
         pandas.util.testing.assert_frame_equal(actual, expected, **kwargs)
     except AssertionError as err:
         msg = str(err)
-        msg += '\nActual:\n{}'.format(actual)
-        msg += '\nExpected:\n{}'.format(expected)
+        msg += "\nActual:\n{}".format(actual)
+        msg += "\nExpected:\n{}".format(expected)
         raise AssertionError(msg)
+
 
 class DataExpectation:
     def __init__(self, target, table, by=None):
@@ -32,6 +34,10 @@ class DataExpectation:
         comparison_columns = expected.columns
         missing_expected_columns = set(comparison_columns) - set(actual.columns)
         if len(missing_expected_columns) > 0:
-            raise AssertionError(f'Missing expected columns: {missing_expected_columns}')
+            raise AssertionError(
+                f"Missing expected columns: {missing_expected_columns}"
+            )
 
-        assert_frame_equal(actual[comparison_columns], expected, check_names=False, check_dtype=False)
+        assert_frame_equal(
+            actual[comparison_columns], expected, check_names=False, check_dtype=False
+        )
