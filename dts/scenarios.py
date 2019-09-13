@@ -1,5 +1,9 @@
+from types import SimpleNamespace
+
 import dts
+import dts.data
 from dts.factories import Factory
+
 # For now, ignore targets.  They're only used in the final assertions.  Need to focus
 # on generating the seed data
 
@@ -18,8 +22,17 @@ class Scenario:
             case.factory.generate(id(case))
 
 
-# TODO: This might just be a simplenamespace - probably not.  I think this will be used heavily in assertions
+# Cases expected data to test:
+#  - Case contains a collection of expectations
+#  - Data expectations have parsed the table provided
 class Case:
-    def __init__(self, factory=None, expected=None):
+    def __init__(self, factory=None, expectations):
         self.factory = factory
-        self.expected = expected or []
+#        self.expected = SimpleNamespace(data=self._parse_expected_data(expected.get('data', [])))
+
+    # def _parse_expected_data(expected_data):
+    #     if not expected_data:
+    #         return []
+
+    #     for expectation in expected_data:
+    #         pass
