@@ -4,7 +4,9 @@ import dts
 from dts.identifiers import Identifier
 from dts.factories import Factory
 from dts.sources import Source
+from dts.targets import Target
 from dts.scenarios import Scenario, Case
+from dts.expectations import DataExpectation
 
 from tests import assert_frame_equal
 
@@ -248,3 +250,22 @@ def test_scenarios_stack_case_data(identifiers, sources, student_factory):
     )
     actual = sources['students'].data.drop(columns='organization_id')
     assert_frame_equal(actual, expected)
+
+def test_cases_assert_expectations():#(sources, student_factory):
+    table = '''
+        | id | name   |
+        | -  | -      |
+        | 1  | Buffy  |
+        | 2  | Willow |
+        | 3  | Xander |
+    '''
+
+    actual_data = dts.data.markdown_to_df(table)
+    actual_data['name'].iloc[1] = 'Evil Willow'
+
+    expectation = DataExpectation(Target(), table)
+    expectation.load_actual(actual_data)
+
+    case = Case(expectations=[expectation])
+    with pytest.raises(AssertionError):
+        case.assert_expectations()

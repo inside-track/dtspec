@@ -22,17 +22,12 @@ class Scenario:
             case.factory.generate(id(case))
 
 
-# Cases expected data to test:
-#  - Case contains a collection of expectations
-#  - Data expectations have parsed the table provided
 class Case:
-    def __init__(self, factory=None, expectations):
+    def __init__(self, factory=None, expectations=None):
         self.factory = factory
-#        self.expected = SimpleNamespace(data=self._parse_expected_data(expected.get('data', [])))
+        self.expectations = expectations or []
 
-    # def _parse_expected_data(expected_data):
-    #     if not expected_data:
-    #         return []
-
-    #     for expectation in expected_data:
-    #         pass
+    def assert_expectations(self):
+        for expectation in self.expectations:
+            expectation.load_actual(expectation.target.case_data(id(self)))
+            expectation.assert_expected()

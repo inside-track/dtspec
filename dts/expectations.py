@@ -29,4 +29,9 @@ class DataExpectation:
             expected = self.expected_data.reset_index(drop=True)
             actual = self.actual_data.reset_index(drop=True)
 
-        assert_frame_equal(actual, expected, check_names=False, check_dtype=False)
+        comparison_columns = expected.columns
+        missing_expected_columns = set(comparison_columns) - set(actual.columns)
+        if len(missing_expected_columns) > 0:
+            raise AssertionError(f'Missing expected columns: {missing_expected_columns}')
+
+        assert_frame_equal(actual[comparison_columns], expected, check_names=False, check_dtype=False)

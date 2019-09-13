@@ -4,7 +4,9 @@ import dts
 from dts.identifiers import Identifier
 from dts.factories import Factory
 from dts.sources import Source
+from dts.targets import Target
 from dts.scenarios import Scenario, Case
+from dts.expectations import DataExpectation
 
 SCHEMA={
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -242,13 +244,23 @@ class Api:
     def source_data(self):
         return {name: source.serialize() for name, source in self.spec['sources'].items()}
 
-    def load_actuals(self):
-        'Used to load data containing the actual results to be compared with expectations'
-        raise NotImplementedError
+    def load_actuals(self, actuals_json):
+        '''
+        Used to load data containing the actual results to be compared with expectations
+
+        Expecting a json object with keys that are the names of data targets
+        and values that are an array of records.  Each record is a json object
+        with keys that are column names and values that are the record column values.
+        '''
+
+        for target, records in actuals_json.items():
+            self.spec['targets'][target].load_actual(records)
 
     def run_assertions(self):
         'Runs all of the assertions defined in the spec against the actual data'
-        raise NotImplementedError
+        for scenario_name, scenario in self.spec['scenarios'].items():
+            for case_name, case in scenario.cases.items():
+                case.assert_expectations()
 
     def _parse_spec_identifiers(self, json_spec):
         self.spec['identifiers'] = {}
@@ -278,27 +290,36 @@ class Api:
             for default in source_json.get('defaults', {}):
                 defaults[default['column']] = default['value']
 
-            id_mapping = {}
-            for id_map in source_json.get('identifier_map', {}):
-                identifier_name = id_map['identifier']['name']
-                if identifier_name not in self.spec['identifiers']:
-                    raise ApiReferentialError(
-                        f'Unable to find identifier "{identifier_name}" referenced in source "{source_name}"'
-                    )
-                id_mapping[id_map['column']] = {
-                    'identifier': self.spec['identifiers'][identifier_name],
-                    'attribute': id_map['identifier']['attribute']
-                }
-
+            id_mapping = self._parse_identifier_map(source_json.get('identifier_map', []), 'source', source_name)
 
             self.spec['sources'][source_name] = Source(
                 defaults=defaults,
                 id_mapping=id_mapping
             )
 
+    def _parse_identifier_map(self, map_json, data_type=None, data_name=None):
+        id_mapping = {}
+        for id_map in map_json:
+            identifier_name = id_map['identifier']['name']
+            if identifier_name not in self.spec['identifiers']:
+                raise ApiReferentialError(
+                    f'Unable to find identifier "{identifier_name}" referenced in {data_type}: "{data_name}"'
+                )
+            id_mapping[id_map['column']] = {
+                'identifier': self.spec['identifiers'][identifier_name],
+                'attribute': id_map['identifier']['attribute']
+            }
+        return id_mapping
+
+
     def _parse_spec_targets(self, json_spec):
-        'not yet implemented'
-        pass
+        self.spec['targets'] = {}
+        for target_json in json_spec['targets']:
+            target_name = target_json['target']
+            id_mapping = self._parse_identifier_map(target_json.get('identifier_map', []), 'target', target_name)
+
+            self.spec['targets'][target_name] = Target(id_mapping=id_mapping)
+
 
     def _parse_spec_factories(self, json_spec):
         self.spec['factories'] = {}
@@ -373,6 +394,26 @@ class Api:
                     inherit_from=[self.spec['factories'][name] for name in scenario_factories],
                     data=case_data
                 ),
-                expected=[]
+                expectations=self._parse_spec_expectations(case_json['expected'])
             )
         return cases
+
+
+    def _parse_spec_expectations(self, expectations_json):
+        expectations = []
+        for expected_data in expectations_json['data']:
+            target_name = expected_data['target']
+            if target_name not in self.spec['targets']:
+                raise ApiReferentialError(
+                    f'Unable to find target "{target_name}" referenced in expectation'
+                )
+
+            target = self.spec['targets'][target_name]
+            expectations.append(
+                DataExpectation(
+                    target=target,
+                    table=expected_data['table'],
+                    by=expected_data.get('by', [])
+                )
+            )
+        return expectations

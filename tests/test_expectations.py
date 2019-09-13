@@ -49,3 +49,17 @@ def test_passes_if_sorted_differently_using_by(sample_table, sample_data):
     expectation.load_actual(actual_data)
 
     expectation.assert_expected()
+
+def test_extra_columns_in_actual_are_ignored(sample_table, sample_data):
+    expectation = DataExpectation('some_target', sample_table)
+    actual_data = sample_data.copy()
+    actual_data['eman'] = actual_data['name'].apply(lambda v: v[::-1])
+    expectation.load_actual(actual_data)
+    expectation.assert_expected()
+
+def test_raise_on_missing_expected_column(sample_table, sample_data):
+    expectation = DataExpectation('some_target', sample_table)
+    actual_data = sample_data.rename(columns={'name': 'first_name'})
+    expectation.load_actual(actual_data)
+    with pytest.raises(AssertionError):
+        expectation.assert_expected()

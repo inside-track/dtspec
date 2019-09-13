@@ -74,6 +74,30 @@ def test_source_identifiers_must_exist(canonical_spec):
     with pytest.raises(dts.api.ApiReferentialError):
         dts.api.Api(error_spec)
 
+def test_targets_are_defined(api):
+    expected = {
+        'analytics.student_classes': dts.api.Target
+    }
+    actual = {k:v.__class__ for k,v in api.spec['targets'].items()}
+    assert actual == expected
+
+def test_targets_can_have_identifier_map(api):
+    expected = api.spec['identifiers']['students']
+    actual = api.spec['targets']['analytics.student_classes'].id_mapping['external_id']['identifier']
+    assert actual == expected
+
+def test_target_identifiers_must_exist(canonical_spec):
+    error_spec = copy.deepcopy(canonical_spec)
+    error_spec['targets'].append({
+        'target': 'not.students',
+        'identifier_map': [
+            {'column': 'external_id', 'identifier': {'name': 'does_not_compute', 'attribute': 'external_id'}}
+        ]
+    })
+    with pytest.raises(dts.api.ApiReferentialError):
+        dts.api.Api(error_spec)
+
+
 def test_factories_are_defined(api):
     expected = {
         'CanonicalStudent': dts.api.Factory,
@@ -199,4 +223,8 @@ def test_cases_can_customize_factories(api):
     actual = case.factory.data['raw.classes']['table']
     assert actual == expected
 
-# TODO: def test_cases_have_expectations(api):
+def test_cases_have_data_expectations(api):
+    case = api.spec['scenarios']['DenormalizingStudentClasses'].cases['BasicDenormalization']
+    expected = [dts.api.DataExpectation]
+    actual = [v.__class__ for v in case.expectations]
+    assert actual == expected
