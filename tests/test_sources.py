@@ -2,20 +2,23 @@ import json
 
 import pytest
 
-import dts.identifiers
-import dts.data
-from dts.sources import Source
+import dts.core
+from dts.core import (
+    markdown_to_df,
+    Identifier,
+    Source
+)
 
 from tests import assert_frame_equal
 
 @pytest.fixture
 def identifiers():
     return {
-        'student': dts.identifiers.Identifier({
+        'student': Identifier({
             'id': {'generator': 'unique_integer'},
             'uuid': {'generator': 'uuid'},
         }),
-        'organization': dts.identifiers.Identifier({
+        'organization': Identifier({
             'id': {'generator': 'unique_integer'},
             'uuid': {'generator': 'uuid'},
         })
@@ -35,7 +38,7 @@ def simple_source(identifiers):
 def test_identifers_are_translated(simple_source, identifiers):
     simple_source.stack(
         'TestCase',
-        dts.data.markdown_to_df('''
+        markdown_to_df('''
         | id | first_name |
         | -  | -          |
         | s1 | Bob        |
@@ -44,7 +47,7 @@ def test_identifers_are_translated(simple_source, identifiers):
     )
 
     actual = simple_source.data
-    expected = dts.data.markdown_to_df(
+    expected = markdown_to_df(
         '''
         | id   | first_name |
         | -    | -          |
@@ -60,7 +63,7 @@ def test_identifers_are_translated(simple_source, identifiers):
 def test_sources_stack(simple_source, identifiers):
     simple_source.stack(
         'TestCase1',
-        dts.data.markdown_to_df('''
+        markdown_to_df('''
         | id | first_name |
         | -  | -          |
         | s1 | Bob        |
@@ -70,7 +73,7 @@ def test_sources_stack(simple_source, identifiers):
 
     simple_source.stack(
         'TestCase2',
-        dts.data.markdown_to_df('''
+        markdown_to_df('''
         | id | first_name |
         | -  | -          |
         | s1 | Bobob      |
@@ -80,7 +83,7 @@ def test_sources_stack(simple_source, identifiers):
 
 
     actual = simple_source.data
-    expected = dts.data.markdown_to_df(
+    expected = markdown_to_df(
         '''
         | id    | first_name |
         | -     | -          |
@@ -100,7 +103,7 @@ def test_sources_stack(simple_source, identifiers):
 def test_data_converts_to_json(simple_source, identifiers):
     simple_source.stack(
         'TestCase',
-        dts.data.markdown_to_df('''
+        markdown_to_df('''
         | id | first_name |
         | -  | -          |
         | s1 | Bob        |
@@ -137,7 +140,7 @@ def test_setting_defaults(identifiers):
 
     source.stack(
         'TestCase',
-        dts.data.markdown_to_df('''
+        markdown_to_df('''
         | id | first_name |
         | -  | -          |
         | s1 | Bob        |
@@ -146,7 +149,7 @@ def test_setting_defaults(identifiers):
     )
 
     actual = source.data
-    expected = dts.data.markdown_to_df(
+    expected = markdown_to_df(
         '''
         | id   | first_name | last_name |
         | -    | -          | -         |
@@ -174,7 +177,7 @@ def test_overriding_defaults(identifiers):
 
     source.stack(
         'TestCase',
-        dts.data.markdown_to_df('''
+        markdown_to_df('''
         | id | first_name | last_name |
         | -  | -          | -         |
         | s1 | Bob        | Not Jones |
@@ -183,7 +186,7 @@ def test_overriding_defaults(identifiers):
     )
 
     actual = source.data
-    expected = dts.data.markdown_to_df(
+    expected = markdown_to_df(
         '''
         | id   | first_name | last_name |
         | -    | -          | -         |
@@ -214,7 +217,7 @@ def test_identifier_defaults(identifiers):
 
     source.stack(
         'TestCase',
-        dts.data.markdown_to_df('''
+        markdown_to_df('''
         | id | first_name |
         | -  | -          |
         | s1 | Bob        |
@@ -227,7 +230,7 @@ def test_identifier_defaults(identifiers):
     ]
 
     actual = source.data
-    expected = dts.data.markdown_to_df(
+    expected = markdown_to_df(
         '''
         | id   | first_name | organization_id |
         | -    | -          | -               |
@@ -255,7 +258,7 @@ def test_setting_values(identifiers):
 
     source.stack(
         'TestCase',
-        dts.data.markdown_to_df('''
+        markdown_to_df('''
         | id | first_name |
         | -  | -          |
         | s1 | Bob        |
@@ -267,7 +270,7 @@ def test_setting_values(identifiers):
     )
 
     actual = source.data
-    expected = dts.data.markdown_to_df(
+    expected = markdown_to_df(
         '''
         | id   | first_name | last_name |
         | -    | -          | -         |
@@ -296,7 +299,7 @@ def test_setting_defaults_and_values(identifiers):
 
     source.stack(
         'TestCase',
-        dts.data.markdown_to_df('''
+        markdown_to_df('''
         | id | first_name |
         | -  | -          |
         | s1 | Bob        |
@@ -308,7 +311,7 @@ def test_setting_defaults_and_values(identifiers):
     )
 
     actual = source.data
-    expected = dts.data.markdown_to_df(
+    expected = markdown_to_df(
         '''
         | id   | first_name | last_name | gender |
         | -    | -          | -         | -      |
@@ -345,7 +348,7 @@ def source_w_multiple_ids(identifiers):
 def test_multiple_identifers_are_translated(source_w_multiple_ids, identifiers):
     source_w_multiple_ids.stack(
         'TestCase',
-        dts.data.markdown_to_df('''
+        markdown_to_df('''
         | id | uuid | organization_id |first_name  |
         | -  | -    | -               | -          |
         | s1 | s1   | o1              | Bob        |
@@ -354,7 +357,7 @@ def test_multiple_identifers_are_translated(source_w_multiple_ids, identifiers):
     )
 
     actual = source_w_multiple_ids.data
-    expected = dts.data.markdown_to_df(
+    expected = markdown_to_df(
         '''
         | id   | uuid  | organization_id | first_name |
         | -    | -     | -               | -          |
@@ -371,10 +374,10 @@ def test_multiple_identifers_are_translated(source_w_multiple_ids, identifiers):
     assert_frame_equal(actual, expected)
 
 def test_all_identifying_columns_must_be_present(source_w_multiple_ids, identifiers):
-    with pytest.raises(dts.sources.IdentifierWithoutColumnError):
+    with pytest.raises(dts.core.IdentifierWithoutColumnError):
         source_w_multiple_ids.stack(
             'TestCase',
-            dts.data.markdown_to_df('''
+            markdown_to_df('''
             | id | first_name  |
             | -  | -           |
             | s1 | Bob         |
@@ -394,11 +397,11 @@ def test_source_without_identifier_generates_data():
     source = Source()
     source.stack(
         'TestCase',
-        dts.data.markdown_to_df(table)
+        markdown_to_df(table)
     )
 
     actual = source.data
-    expected = dts.data.markdown_to_df(table)
+    expected = markdown_to_df(table)
     assert_frame_equal(actual, expected)
 
 def test_source_without_identifer_not_stacked():
@@ -412,15 +415,15 @@ def test_source_without_identifer_not_stacked():
     source = Source()
     source.stack(
         'TestCase',
-        dts.data.markdown_to_df(table)
+        markdown_to_df(table)
     )
     source.stack(
         'TestCase',
-        dts.data.markdown_to_df(table)
+        markdown_to_df(table)
     )
 
     actual = source.data
-    expected = dts.data.markdown_to_df(table)
+    expected = markdown_to_df(table)
     assert_frame_equal(actual, expected)
 
 
@@ -428,7 +431,7 @@ def test_source_without_identifer_raises_if_data_changes():
     source = Source()
     source.stack(
         'TestCase',
-        dts.data.markdown_to_df('''
+        markdown_to_df('''
             | date       | season      |
             | -          | -           |
             | 2001-09-08 | Fall 2001   |
@@ -436,10 +439,10 @@ def test_source_without_identifer_raises_if_data_changes():
         ''')
     )
 
-    with pytest.raises(dts.sources.CannotStackStaticSourceError):
+    with pytest.raises(dts.core.CannotStackStaticSourceError):
         source.stack(
             'TestCase',
-            dts.data.markdown_to_df('''
+            markdown_to_df('''
                 | date       | season      |
                 | -          | -           |
                 | 2002-06-01 | Summer 2002 |

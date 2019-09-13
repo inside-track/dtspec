@@ -1,16 +1,19 @@
 import copy
 import pytest
 
-import dts.identifiers
-from dts.targets import Target
-from dts.data import markdown_to_df
+import dts.core
+from dts.core import (
+    markdown_to_df,
+    Identifier,
+    Target
+)
 
 from tests import assert_frame_equal
 
 @pytest.fixture
 def identifiers():
     return {
-        'student': dts.identifiers.Identifier({
+        'student': Identifier({
             'id': {'generator': 'unique_integer'},
             'uuid': {'generator': 'uuid'},
         })
@@ -80,5 +83,5 @@ def test_target_can_be_split_into_case(simple_target, simple_data):
 def test_raises_error_if_raw_id_not_found(simple_target, simple_data):
     bad_data = copy.deepcopy(simple_data)
     bad_data[1]['id'] = 123456789
-    with pytest.raises(dts.identifiers.UnableToFindNamedIdError):
+    with pytest.raises(dts.core.UnableToFindNamedIdError):
         simple_target.load_actual(bad_data)

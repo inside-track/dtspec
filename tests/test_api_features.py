@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 import dts.api
-from dts.data import markdown_to_df
+from dts.core import markdown_to_df
 
 from tests import assert_frame_equal
 

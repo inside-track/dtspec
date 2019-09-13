@@ -1,11 +1,14 @@
 import jsonschema
 
 import dts
-from dts.identifiers import Identifier
-from dts.factories import Factory
-from dts.sources import Source
-from dts.targets import Target
-from dts.scenarios import Scenario, Case
+from dts.core import (
+    Identifier,
+    Factory,
+    Source,
+    Target,
+    Scenario,
+    Case
+)
 from dts.expectations import DataExpectation
 
 SCHEMA={

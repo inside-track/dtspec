@@ -1,6 +1,6 @@
 import pandas.util.testing
 
-import dts.data
+from dts.core import markdown_to_df
 
 def assert_frame_equal(actual, expected, **kwargs):
     try:
@@ -14,7 +14,7 @@ def assert_frame_equal(actual, expected, **kwargs):
 class DataExpectation:
     def __init__(self, target, table, by=None):
         self.target = target
-        self.expected_data = dts.data.markdown_to_df(table)
+        self.expected_data = markdown_to_df(table)
         self.actual_data = None
         self.by = by or []
 

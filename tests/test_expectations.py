@@ -1,8 +1,8 @@
 import pandas as pd
 import pytest
 
+from dts.core import markdown_to_df
 from dts.expectations import DataExpectation
-import dts.data
 
 @pytest.fixture
 def sample_table():
@@ -16,7 +16,7 @@ def sample_table():
 
 @pytest.fixture
 def sample_data(sample_table):
-    return dts.data.markdown_to_df(sample_table)
+    return markdown_to_df(sample_table)
 
 def test_passes_when_data_is_the_same(sample_table, sample_data):
     expectation = DataExpectation('some_target', sample_table)

@@ -1,7 +1,7 @@
 import pandas as pd
 from pandas.util.testing import assert_frame_equal
 
-import dts.data
+from dts.core import markdown_to_df
 
 class TestMarkdownToDf:
     def test_convert_table_to_df(self):
@@ -19,7 +19,7 @@ class TestMarkdownToDf:
             'id': ['1', '2', '3'],
             'name': ['one', 'two', 'three']
         })
-        actual = dts.data.markdown_to_df(given)
+        actual = markdown_to_df(given)
 
         assert_frame_equal(actual, expected)
 
@@ -39,7 +39,7 @@ class TestMarkdownToDf:
             'id': ['1', '2', '3'],
             'name': ['one', '', 'three']
         })
-        actual = dts.data.markdown_to_df(given)
+        actual = markdown_to_df(given)
 
         assert_frame_equal(actual, expected)
 
@@ -58,7 +58,7 @@ class TestMarkdownToDf:
             'id': ['1', '2', '3'],
             'name': ['one', None, 'three']
         })
-        actual = dts.data.markdown_to_df(given)
+        actual = markdown_to_df(given)
 
         assert_frame_equal(actual, expected)
 
@@ -77,7 +77,7 @@ class TestMarkdownToDf:
             'id': ['1', '2', '3'],
             'name': ['one', 'two', 'three']
         })
-        actual = dts.data.markdown_to_df(given)
+        actual = markdown_to_df(given)
 
         assert_frame_equal(actual, expected)
 
@@ -97,6 +97,6 @@ class TestMarkdownToDf:
             'id': ['1', '2', '3'],
             'name': ['one', '#2', 'three']
         })
-        actual = dts.data.markdown_to_df(given)
+        actual = markdown_to_df(given)
 
         assert_frame_equal(actual, expected)

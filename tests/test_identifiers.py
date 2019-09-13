@@ -1,12 +1,11 @@
 import re
 import pytest
 
-import dts.identifiers
-
+from dts.core import Identifier
 
 @pytest.fixture
 def student():
-    return dts.identifiers.Identifier({
+    return Identifier({
         'id': {'generator': 'unique_integer'},
         'uuid': {'generator': 'uuid'},
         'external_id': {'generator': 'unique_string', 'prefix': 'TestPrefix-'}
@@ -55,7 +54,7 @@ def test_generators_can_be_passed_args(student):
 
 def test_generators_fail_when_passed_bad_args():
     with pytest.raises(TypeError):
-        dts.identifiers.Identifier({
+        Identifier({
             'external_id': {'generator': 'unique_string', 'bad_arg': 'TestPrefix-'}
         })
 

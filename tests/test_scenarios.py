@@ -1,11 +1,15 @@
 import pytest
 
 import dts
-from dts.identifiers import Identifier
-from dts.factories import Factory
-from dts.sources import Source
-from dts.targets import Target
-from dts.scenarios import Scenario, Case
+from dts.core import(
+    markdown_to_df,
+    Identifier,
+    Factory,
+    Source,
+    Target,
+    Scenario,
+    Case
+)
 from dts.expectations import DataExpectation
 
 from tests import assert_frame_equal
@@ -96,7 +100,7 @@ def test_scenarios_generate_case_data(identifiers, sources, student_factory):
 
     scenario.generate()
 
-    expected = dts.data.markdown_to_df(
+    expected = markdown_to_df(
         '''
         | id   | first_name |
         | -    | -          |
@@ -125,7 +129,7 @@ def test_scenarios_generate_case_data_over_multiple_cases(identifiers, sources, 
 
     scenario.generate()
 
-    expected = dts.data.markdown_to_df(
+    expected = markdown_to_df(
         '''
         | id   | first_name |
         | -    | -          |
@@ -140,7 +144,7 @@ def test_scenarios_generate_case_data_over_multiple_cases(identifiers, sources, 
     assert_frame_equal(actual, expected)
 
 
-    expected = dts.data.markdown_to_df(
+    expected = markdown_to_df(
         '''
         | id   | name                    |
         | -    | -                       |
@@ -178,7 +182,7 @@ def test_scenario_case_factories_can_override(identifiers, sources, student_fact
 
     scenario.generate()
 
-    expected = dts.data.markdown_to_df(
+    expected = markdown_to_df(
         '''
         | id   | organization_id | first_name |
         | -    | -               | -          |
@@ -194,7 +198,7 @@ def test_scenario_case_factories_can_override(identifiers, sources, student_fact
     assert_frame_equal(actual, expected)
 
 
-    expected = dts.data.markdown_to_df(
+    expected = markdown_to_df(
         '''
         | id   | name                    |
         | -    | -                       |
@@ -235,7 +239,7 @@ def test_scenarios_stack_case_data(identifiers, sources, student_factory):
 
     scenario.generate()
 
-    expected = dts.data.markdown_to_df(
+    expected = markdown_to_df(
         '''
         | id    | first_name |
         | -     | -          |
@@ -260,7 +264,7 @@ def test_cases_assert_expectations():#(sources, student_factory):
         | 3  | Xander |
     '''
 
-    actual_data = dts.data.markdown_to_df(table)
+    actual_data = markdown_to_df(table)
     actual_data['name'].iloc[1] = 'Evil Willow'
 
     expectation = DataExpectation(Target(), table)

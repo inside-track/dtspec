@@ -2,9 +2,12 @@ from copy import deepcopy
 import pytest
 
 import dts
-from dts.identifiers import Identifier
-from dts.factories import Factory
-from dts.sources import Source
+from dts.core import (
+    markdown_to_df,
+    Identifier,
+    Factory,
+    Source
+)
 
 from tests import assert_frame_equal
 
@@ -88,7 +91,7 @@ def test_factories_stack_a_source(identifiers, sources):
 
     factory.generate('TestCase')
 
-    expected = dts.data.markdown_to_df(
+    expected = markdown_to_df(
         '''
         | id   | first_name |
         | -    | -          |
@@ -126,7 +129,7 @@ def test_factories_stack_sources(identifiers, sources):
 
     factory.generate('TestCase')
 
-    expected_students = dts.data.markdown_to_df(
+    expected_students = markdown_to_df(
         '''
         | id   | organization_id | first_name |
         | -    | -               | -          |
@@ -140,7 +143,7 @@ def test_factories_stack_sources(identifiers, sources):
     )
     actual_students = sources['students'].data.drop(columns=['external_id'])
 
-    expected_organizations = dts.data.markdown_to_df(
+    expected_organizations = markdown_to_df(
         '''
         | id   | name           |
         | -    | -              |
@@ -209,7 +212,7 @@ def test_inheritance_w_new_data(identifiers, sources):
         sources=sources
     )
 
-    expected = dts.data.markdown_to_df(modified_table)
+    expected = markdown_to_df(modified_table)
     actual = composite_factory.data['students']['dataframe']
     assert_frame_equal(actual, expected)
 
@@ -251,7 +254,7 @@ def test_inheritance_w_multiple_base_sources(identifiers, sources):
     )
 
 
-    expected = dts.data.markdown_to_df(modified_table)
+    expected = markdown_to_df(modified_table)
     actual = composite_factory.data['students']['dataframe']
     assert_frame_equal(actual, expected)
 
@@ -298,11 +301,11 @@ def test_inheritance_w_multiple_composite_sources(identifiers, sources):
     )
 
 
-    expected = dts.data.markdown_to_df(modified_students_table)
+    expected = markdown_to_df(modified_students_table)
     actual = composite_factory.data['students']['dataframe']
     assert_frame_equal(actual, expected)
 
-    expected = dts.data.markdown_to_df(new_organizations_table)
+    expected = markdown_to_df(new_organizations_table)
     actual = composite_factory.data['organizations']['dataframe']
     assert_frame_equal(actual, expected)
 
@@ -385,7 +388,7 @@ def test_inheritance_defaults_are_overridden(identifiers, sources):
 
     composite_factory.generate('TestCase')
 
-    expected = dts.data.markdown_to_df(
+    expected = markdown_to_df(
         '''
         | id   | first_name | last_name |
         | -    | -          | -         |
