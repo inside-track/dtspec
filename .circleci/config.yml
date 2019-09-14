@@ -32,3 +32,9 @@ jobs:
           command: |
             . venv/bin/activate
             inv test
+
+workflows:
+  version: 2
+  workflow:
+    jobs:
+    - build
