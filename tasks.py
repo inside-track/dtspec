@@ -7,8 +7,9 @@ def test(ctx):
 
 
 @task
-def lint_black(ctx):
-    ctx.run("black .")
+def lint_black(ctx, check=False):
+
+    ctx.run(f"black {'--check' if check else ''} .")
 
 
 @task
@@ -17,6 +18,7 @@ def lint_pylint(ctx):
     ctx.run("pylint tests")
 
 
-@task(pre=[lint_black, lint_pylint])
-def lint(ctx):
-    pass
+@task
+def lint(ctx, check=False):
+    lint_black(ctx, check=check)
+    lint_pylint(ctx)
