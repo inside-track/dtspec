@@ -15,12 +15,20 @@ jobs:
       - run:
           name: install dependencies
           command: |
+            python3 -m venv venv
+            . venv/bin/activate
+
+            pip install --upgrade pip
             pip install -r requirements.txt
 
       - run:
           name: linters
-          command: inv lint --check
+          command: |
+            . venv/bin/activate
+            inv lint --check
 
       - run:
           name: tests
-          command: inv test
+          command: |
+            . venv/bin/activate
+            inv test
