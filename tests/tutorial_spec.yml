@@ -1,0 +1,54 @@
+# use multiple docs like load_all here - https://pyyaml.org/wiki/PyYAMLDocumentation
+
+---
+version: '0.1'
+description: |
+  Hello World example
+
+sources:
+  - source: raw.students
+
+targets:
+  - target: salutations
+
+factories:
+  - factory: SomeStudents
+    description: Minimal example of what some student records may look like
+
+    data:
+      - source: raw.students
+        table: |
+          | id | name   |
+          | -  | -      |
+          | 1  | Buffy  |
+          | 2  | Willow |
+        values:
+          - column: clique
+            value: Scooby Gang
+
+scenarios:
+  - scenario: Hello World
+    description: The simplest scenario
+    factories:
+      - SomeStudents
+
+    cases:
+      - case: HelloGang
+        description: Make sure we say hello to everyone
+        expected:
+          data:
+            - target: salutations
+              table: |
+                | id | name   | clique      | salutation   |
+                | -  | -      | -           | -            |
+                | 1  | Buffy  | Scooby Gang | Hello Buffy  |
+                | 2  | Willow | Scooby Gang | Hello Willow |
+
+
+
+# Other things to show
+# - multiple cases (need identifiers)
+# - mutiple source/targets/scenarios/factories
+# -    w/ static data
+# - factory inheritance principles
+# - sorting by's
