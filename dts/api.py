@@ -1,6 +1,5 @@
 import jsonschema
 
-import dts
 from dts.core import Identifier, Factory, Source, Target, Scenario, Case
 from dts.expectations import DataExpectation
 
@@ -173,9 +172,7 @@ SCHEMA = {
                         "type": "array",
                         "minItems": 1,
                         "uniqueItems": True,
-                        "items": {
-                            "type": "string"
-                        },  # TODO: extend this to allow anonymous factories too
+                        "items": {"type": "string"},
                     },
                     "cases": {
                         "type": "array",
@@ -222,7 +219,6 @@ class ApiReferentialError(ApiValidationError):
     pass
 
 
-# TODO: descriptions on all the things
 class Api:
     def __init__(self, json_spec):
         self.spec = {}
@@ -262,8 +258,8 @@ class Api:
 
     def run_assertions(self):
         "Runs all of the assertions defined in the spec against the actual data"
-        for scenario_name, scenario in self.spec["scenarios"].items():
-            for case_name, case in scenario.cases.items():
+        for _scenario_name, scenario in self.spec["scenarios"].items():
+            for _case_name, case in scenario.cases.items():
                 case.assert_expectations()
 
     def _parse_spec_identifiers(self, json_spec):

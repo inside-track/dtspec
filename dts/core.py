@@ -120,8 +120,7 @@ class Identifier:
                 **generator_args
             )
 
-    # TODO: rename to generate
-    def record(self, case, named_id):
+    def generate(self, case, named_id):
         if case not in self.cases:
             self.cases[case] = SimpleNamespace(named_ids={})
 
@@ -132,7 +131,6 @@ class Identifier:
 
         return self.cases[case].named_ids[named_id]
 
-    # TODO: raise an error if a record belongs to more than one case?
     def find(self, attribute, raw_id):
         "Given an attribute and a raw id, return named attribute and case"
         found = SimpleNamespace(named_id=None, case=None)
@@ -151,7 +149,7 @@ class Identifier:
 def _frame_is_equal(df1, df2):
     try:
         assert_frame_equal(df1, df2)
-    except AssertionError as err:
+    except AssertionError:
         return False
     return True
 
@@ -198,7 +196,7 @@ class Source:
             if isinstance(value, dict) and "identifier" in value:
                 df[column] = None
                 df[column] = df[column].apply(
-                    lambda _: value["identifier"].record(
+                    lambda _, value=value: value["identifier"].generate(
                         case=case, named_id=uuid.uuid4()
                     )[value["attribute"]]
                 )
@@ -216,9 +214,9 @@ class Source:
 
         for column, mapto in self.id_mapping.items():
             df[column] = df[column].apply(
-                lambda v: mapto["identifier"].record(case=case, named_id=v)[
-                    mapto["attribute"]
-                ]
+                lambda v, mapto=mapto: mapto["identifier"].generate(
+                    case=case, named_id=v
+                )[mapto["attribute"]]
             )
         return df
 
@@ -248,8 +246,12 @@ class Target:
                 raw_id: mapto["identifier"].find(mapto["attribute"], raw_id)
                 for raw_id in self.data[column]
             }
-            self.data["__dts_case__"] = self.data[column].apply(lambda v: lkp[v].case)
-            self.data[column] = self.data[column].apply(lambda v: lkp[v].named_id)
+            self.data["__dts_case__"] = self.data[column].apply(
+                lambda v, lkp=lkp: lkp[v].case
+            )
+            self.data[column] = self.data[column].apply(
+                lambda v, lkp=lkp: lkp[v].named_id
+            )
 
     def case_data(self, case):
         if "__dts_case__" not in self.data.columns:
@@ -313,16 +315,16 @@ class DuplicateCaseError(Exception):
     pass
 
 
-class Scenario:
+class Scenario:  # pylint: disable=too-few-public-methods
     def __init__(self, cases=None):
         self.cases = cases or {}
 
     def generate(self):
-        for case_name, case in self.cases.items():
+        for _case_name, case in self.cases.items():
             case.factory.generate(id(case))
 
 
-class Case:
+class Case:  # pylint: disable=too-few-public-methods
     def __init__(self, factory=None, expectations=None):
         self.factory = factory
         self.expectations = expectations or []

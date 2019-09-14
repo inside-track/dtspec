@@ -1,11 +1,11 @@
-import json
-
 import pytest
 
 import dts.core
 from dts.core import markdown_to_df, Identifier, Source
 
 from tests import assert_frame_equal
+
+# pylint: disable=redefined-outer-name
 
 
 @pytest.fixture
@@ -48,8 +48,8 @@ def test_identifers_are_translated(simple_source, identifiers):
         | {s1} | Bob        |
         | {s2} | Nancy      |
         """.format(
-            s1=identifiers["student"].record(case="TestCase", named_id="s1")["id"],
-            s2=identifiers["student"].record(case="TestCase", named_id="s2")["id"],
+            s1=identifiers["student"].generate(case="TestCase", named_id="s1")["id"],
+            s2=identifiers["student"].generate(case="TestCase", named_id="s2")["id"],
         )
     )
     assert_frame_equal(actual, expected)
@@ -90,10 +90,10 @@ def test_sources_stack(simple_source, identifiers):
         | {s21} | Bobob      |
         | {s22} | Nanci      |
         """.format(
-            s11=identifiers["student"].record(case="TestCase1", named_id="s1")["id"],
-            s12=identifiers["student"].record(case="TestCase1", named_id="s2")["id"],
-            s21=identifiers["student"].record(case="TestCase2", named_id="s1")["id"],
-            s22=identifiers["student"].record(case="TestCase2", named_id="s2")["id"],
+            s11=identifiers["student"].generate(case="TestCase1", named_id="s1")["id"],
+            s12=identifiers["student"].generate(case="TestCase1", named_id="s2")["id"],
+            s21=identifiers["student"].generate(case="TestCase2", named_id="s1")["id"],
+            s22=identifiers["student"].generate(case="TestCase2", named_id="s2")["id"],
         )
     )
     assert_frame_equal(actual, expected)
@@ -115,11 +115,11 @@ def test_data_converts_to_json(simple_source, identifiers):
     actual = simple_source.serialize()
     expected = [
         {
-            "id": identifiers["student"].record(case="TestCase", named_id="s1")["id"],
+            "id": identifiers["student"].generate(case="TestCase", named_id="s1")["id"],
             "first_name": "Bob",
         },
         {
-            "id": identifiers["student"].record(case="TestCase", named_id="s2")["id"],
+            "id": identifiers["student"].generate(case="TestCase", named_id="s2")["id"],
             "first_name": "Nancy",
         },
     ]
@@ -153,8 +153,8 @@ def test_setting_defaults(identifiers):
         | {s1} | Bob        | Jones     |
         | {s2} | Nancy      | Jones     |
         """.format(
-            s1=identifiers["student"].record(case="TestCase", named_id="s1")["id"],
-            s2=identifiers["student"].record(case="TestCase", named_id="s2")["id"],
+            s1=identifiers["student"].generate(case="TestCase", named_id="s1")["id"],
+            s2=identifiers["student"].generate(case="TestCase", named_id="s2")["id"],
         )
     )
     assert_frame_equal(actual, expected)
@@ -186,8 +186,8 @@ def test_overriding_defaults(identifiers):
         | {s1} | Bob        | Not Jones |
         | {s2} | Nancy      | Not Jones |
         """.format(
-            s1=identifiers["student"].record(case="TestCase", named_id="s1")["id"],
-            s2=identifiers["student"].record(case="TestCase", named_id="s2")["id"],
+            s1=identifiers["student"].generate(case="TestCase", named_id="s1")["id"],
+            s2=identifiers["student"].generate(case="TestCase", named_id="s2")["id"],
         )
     )
     assert_frame_equal(actual, expected)
@@ -229,8 +229,8 @@ def test_identifier_defaults(identifiers):
         | {s1} | Bob        | {o1}            |
         | {s2} | Nancy      | {o2}            |
         """.format(
-            s1=identifiers["student"].record(case="TestCase", named_id="s1")["id"],
-            s2=identifiers["student"].record(case="TestCase", named_id="s2")["id"],
+            s1=identifiers["student"].generate(case="TestCase", named_id="s1")["id"],
+            s2=identifiers["student"].generate(case="TestCase", named_id="s2")["id"],
             o1=anonymous_ids[0],
             o2=anonymous_ids[1],
         )
@@ -264,8 +264,8 @@ def test_setting_values(identifiers):
         | {s1} | Bob        | Summers   |
         | {s2} | Nancy      | Summers   |
         """.format(
-            s1=identifiers["student"].record(case="TestCase", named_id="s1")["id"],
-            s2=identifiers["student"].record(case="TestCase", named_id="s2")["id"],
+            s1=identifiers["student"].generate(case="TestCase", named_id="s1")["id"],
+            s2=identifiers["student"].generate(case="TestCase", named_id="s2")["id"],
         )
     )
     assert_frame_equal(actual, expected)
@@ -298,8 +298,8 @@ def test_setting_defaults_and_values(identifiers):
         | {s1} | Bob        | Summers   | X      |
         | {s2} | Nancy      | Summers   | X      |
         """.format(
-            s1=identifiers["student"].record(case="TestCase", named_id="s1")["id"],
-            s2=identifiers["student"].record(case="TestCase", named_id="s2")["id"],
+            s1=identifiers["student"].generate(case="TestCase", named_id="s1")["id"],
+            s2=identifiers["student"].generate(case="TestCase", named_id="s2")["id"],
         )
     )
     assert_frame_equal(actual, expected)
@@ -340,17 +340,19 @@ def test_multiple_identifers_are_translated(source_w_multiple_ids, identifiers):
         | {s1} | {su1} | {o1}            | Bob        |
         | {s2} | {su2} | {o1}            | Nancy      |
         """.format(
-            s1=identifiers["student"].record(case="TestCase", named_id="s1")["id"],
-            s2=identifiers["student"].record(case="TestCase", named_id="s2")["id"],
-            su1=identifiers["student"].record(case="TestCase", named_id="s1")["uuid"],
-            su2=identifiers["student"].record(case="TestCase", named_id="s2")["uuid"],
-            o1=identifiers["organization"].record(case="TestCase", named_id="o1")["id"],
+            s1=identifiers["student"].generate(case="TestCase", named_id="s1")["id"],
+            s2=identifiers["student"].generate(case="TestCase", named_id="s2")["id"],
+            su1=identifiers["student"].generate(case="TestCase", named_id="s1")["uuid"],
+            su2=identifiers["student"].generate(case="TestCase", named_id="s2")["uuid"],
+            o1=identifiers["organization"].generate(case="TestCase", named_id="o1")[
+                "id"
+            ],
         )
     )
     assert_frame_equal(actual, expected)
 
 
-def test_all_identifying_columns_must_be_present(source_w_multiple_ids, identifiers):
+def test_all_identifying_columns_must_be_present(source_w_multiple_ids):
     with pytest.raises(dts.core.IdentifierWithoutColumnError):
         source_w_multiple_ids.stack(
             "TestCase",

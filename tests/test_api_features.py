@@ -1,8 +1,6 @@
 import json
-import copy
 
 import yaml
-import jsonschema
 import pandas as pd
 
 import pytest
@@ -11,6 +9,8 @@ import dts.api
 from dts.core import markdown_to_df
 
 from tests import assert_frame_equal
+
+# pylint: disable=redefined-outer-name
 
 
 def transformer(
@@ -99,7 +99,7 @@ def test_running_transformer_with_source_data(api, source_data):
         case_id = id(
             api.spec["scenarios"]["DenormalizingStudentClasses"].cases[case_name]
         )
-        return api.spec["identifiers"]["students"].record(
+        return api.spec["identifiers"]["students"].generate(
             case=case_id, named_id=named_id
         )["external_id"]
 

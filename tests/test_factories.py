@@ -1,10 +1,11 @@
 from copy import deepcopy
 import pytest
 
-import dts
 from dts.core import markdown_to_df, Identifier, Factory, Source
 
 from tests import assert_frame_equal
+
+# pylint: disable=redefined-outer-name
 
 
 @pytest.fixture
@@ -87,8 +88,8 @@ def test_factories_stack_a_source(identifiers, sources):
         | {s1} | Buffy      |
         | {s2} | Willow     |
         """.format(
-            s1=identifiers["student"].record(case="TestCase", named_id="s1")["id"],
-            s2=identifiers["student"].record(case="TestCase", named_id="s2")["id"],
+            s1=identifiers["student"].generate(case="TestCase", named_id="s1")["id"],
+            s2=identifiers["student"].generate(case="TestCase", named_id="s2")["id"],
         )
     )
     actual = sources["students"].data.drop(columns=sources["students"].defaults.keys())
@@ -126,9 +127,11 @@ def test_factories_stack_sources(identifiers, sources):
         | {s1} | {o1}            | Buffy      |
         | {s2} | {o1}            | Willow     |
         """.format(
-            s1=identifiers["student"].record(case="TestCase", named_id="s1")["id"],
-            s2=identifiers["student"].record(case="TestCase", named_id="s2")["id"],
-            o1=identifiers["organization"].record(case="TestCase", named_id="o1")["id"],
+            s1=identifiers["student"].generate(case="TestCase", named_id="s1")["id"],
+            s2=identifiers["student"].generate(case="TestCase", named_id="s2")["id"],
+            o1=identifiers["organization"].generate(case="TestCase", named_id="o1")[
+                "id"
+            ],
         )
     )
     actual_students = sources["students"].data.drop(columns=["external_id"])
@@ -139,7 +142,9 @@ def test_factories_stack_sources(identifiers, sources):
         | -    | -              |
         | {o1} | Sunnydale High |
         """.format(
-            o1=identifiers["organization"].record(case="TestCase", named_id="o1")["id"]
+            o1=identifiers["organization"].generate(case="TestCase", named_id="o1")[
+                "id"
+            ]
         )
     )
     actual_organizations = sources["organizations"].data.drop(columns=["uuid"])
@@ -148,7 +153,7 @@ def test_factories_stack_sources(identifiers, sources):
     assert_frame_equal(actual_organizations, expected_organizations)
 
 
-def test_inheritance_wo_new_data(identifiers, sources):
+def test_inheritance_wo_new_data(sources):
     base_factory = Factory(
         data={
             "students": {
@@ -170,7 +175,7 @@ def test_inheritance_wo_new_data(identifiers, sources):
     assert_frame_equal(actual, expected)
 
 
-def test_inheritance_w_new_data(identifiers, sources):
+def test_inheritance_w_new_data(sources):
     base_factory = Factory(
         data={
             "students": {
@@ -203,7 +208,7 @@ def test_inheritance_w_new_data(identifiers, sources):
     assert_frame_equal(actual, expected)
 
 
-def test_inheritance_w_multiple_base_sources(identifiers, sources):
+def test_inheritance_w_multiple_base_sources(sources):
     base_factory = Factory(
         data={
             "students": {
@@ -247,7 +252,7 @@ def test_inheritance_w_multiple_base_sources(identifiers, sources):
     assert_frame_equal(actual, expected)
 
 
-def test_inheritance_w_multiple_composite_sources(identifiers, sources):
+def test_inheritance_w_multiple_composite_sources(sources):
     base_factory = Factory(
         data={
             "students": {
@@ -293,7 +298,7 @@ def test_inheritance_w_multiple_composite_sources(identifiers, sources):
     assert_frame_equal(actual, expected)
 
 
-def test_multiple_inheritance(identifiers, sources):
+def test_multiple_inheritance(sources):
     base1_factory = Factory(
         data={
             "students": {
@@ -372,7 +377,7 @@ def test_inheritance_defaults_are_overridden(identifiers, sources):
         | -    | -          | -         |
         | {s1} | Bob        | Loblaw    |
         """.format(
-            s1=identifiers["student"].record(case="TestCase", named_id="s1")["id"]
+            s1=identifiers["student"].generate(case="TestCase", named_id="s1")["id"]
         )
     )
     actual = sources["students"].data.drop(columns=["external_id", "organization_id"])

@@ -6,6 +6,8 @@ from dts.core import markdown_to_df, Identifier, Target
 
 from tests import assert_frame_equal
 
+# pylint: disable=redefined-outer-name
+
 
 @pytest.fixture
 def identifiers():
@@ -26,16 +28,16 @@ def simple_target(identifiers):
 @pytest.fixture
 def stu(identifiers):
     return {
-        "c1stu1": identifiers["student"].record(case="TestCase1", named_id="stu1")[
+        "c1stu1": identifiers["student"].generate(case="TestCase1", named_id="stu1")[
             "id"
         ],
-        "c1stu2": identifiers["student"].record(case="TestCase1", named_id="stu2")[
+        "c1stu2": identifiers["student"].generate(case="TestCase1", named_id="stu2")[
             "id"
         ],
-        "c2stu1": identifiers["student"].record(case="TestCase2", named_id="stu1")[
+        "c2stu1": identifiers["student"].generate(case="TestCase2", named_id="stu1")[
             "id"
         ],
-        "c2stu2": identifiers["student"].record(case="TestCase2", named_id="stu2")[
+        "c2stu2": identifiers["student"].generate(case="TestCase2", named_id="stu2")[
             "id"
         ],
     }

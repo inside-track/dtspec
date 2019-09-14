@@ -1,8 +1,9 @@
-import pandas as pd
 import pytest
 
 from dts.core import markdown_to_df
 from dts.expectations import DataExpectation
+
+# pylint: disable=redefined-outer-name
 
 
 @pytest.fixture

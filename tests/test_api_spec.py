@@ -1,10 +1,13 @@
+import copy
+
 import yaml
 import jsonschema
-import copy
 
 import pytest
 
 import dts.api
+
+# pylint: disable=redefined-outer-name
 
 
 @pytest.fixture
@@ -25,7 +28,7 @@ def test_identifiers_are_defined(api):
     expected = {
         "students": dts.api.Identifier,
         "schools": dts.api.Identifier,
-        "classes": dts.api.dts.api.Identifier,
+        "classes": dts.api.Identifier,
     }
     actual = {k: v.__class__ for k, v in api.spec["identifiers"].items()}
     assert actual == expected
@@ -53,8 +56,8 @@ def test_sources_are_defined(api):
     expected = {
         "raw.students": dts.api.Source,
         "raw.schools": dts.api.Source,
-        "raw.classes": dts.api.dts.api.Source,
-        "analytics.dim_date": dts.api.dts.api.Source,
+        "raw.classes": dts.api.Source,
+        "analytics.dim_date": dts.api.Source,
     }
     actual = {k: v.__class__ for k, v in api.spec["sources"].items()}
     assert actual == expected

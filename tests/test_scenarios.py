@@ -1,10 +1,11 @@
 import pytest
 
-import dts
 from dts.core import markdown_to_df, Identifier, Factory, Source, Target, Scenario, Case
 from dts.expectations import DataExpectation
 
 from tests import assert_frame_equal
+
+# pylint: disable=redefined-outer-name
 
 
 @pytest.fixture
@@ -49,7 +50,7 @@ def sources(identifiers):
 
 
 @pytest.fixture
-def student_factory(identifiers, sources):
+def student_factory(sources):
     return Factory(
         data={
             "students": {
@@ -66,7 +67,7 @@ def student_factory(identifiers, sources):
 
 
 @pytest.fixture
-def organization_factory(identifiers, sources):
+def organization_factory(sources):
     return Factory(
         data={
             "organizations": {
@@ -100,10 +101,10 @@ def test_scenarios_generate_case_data(identifiers, sources, student_factory):
         | {s1} | Bill       |
         | {s2} | Ted        |
         """.format(
-            s1=identifiers["student"].record(
+            s1=identifiers["student"].generate(
                 case=id(scenario.cases["SimpleStudent"]), named_id="s1"
             )["id"],
-            s2=identifiers["student"].record(
+            s2=identifiers["student"].generate(
                 case=id(scenario.cases["SimpleStudent"]), named_id="s2"
             )["id"],
         )
@@ -135,10 +136,10 @@ def test_scenarios_generate_case_data_over_multiple_cases(
         | {s1} | Bill       |
         | {s2} | Ted        |
         """.format(
-            s1=identifiers["student"].record(
+            s1=identifiers["student"].generate(
                 case=id(scenario.cases["SimpleStudent"]), named_id="s1"
             )["id"],
-            s2=identifiers["student"].record(
+            s2=identifiers["student"].generate(
                 case=id(scenario.cases["SimpleStudent"]), named_id="s2"
             )["id"],
         )
@@ -153,10 +154,10 @@ def test_scenarios_generate_case_data_over_multiple_cases(
         | {o1} | San Dimas High          |
         | {o2} | Alaska Military Academy |
         """.format(
-            o1=identifiers["organization"].record(
+            o1=identifiers["organization"].generate(
                 case=id(scenario.cases["SimpleOrganization"]), named_id="o1"
             )["id"],
-            o2=identifiers["organization"].record(
+            o2=identifiers["organization"].generate(
                 case=id(scenario.cases["SimpleOrganization"]), named_id="o2"
             )["id"],
         )
@@ -198,13 +199,13 @@ def test_scenario_case_factories_can_override(
         | {s1} | {o1}            | Bill       |
         | {s2} | {o1}            | Ted        |
         """.format(
-            s1=identifiers["student"].record(
+            s1=identifiers["student"].generate(
                 case=id(scenario.cases["StudentOrg"]), named_id="s1"
             )["id"],
-            s2=identifiers["student"].record(
+            s2=identifiers["student"].generate(
                 case=id(scenario.cases["StudentOrg"]), named_id="s2"
             )["id"],
-            o1=identifiers["organization"].record(
+            o1=identifiers["organization"].generate(
                 case=id(scenario.cases["StudentOrg"]), named_id="o1"
             )["id"],
         )
@@ -219,10 +220,10 @@ def test_scenario_case_factories_can_override(
         | {o1} | San Dimas High          |
         | {o2} | Alaska Military Academy |
         """.format(
-            o1=identifiers["organization"].record(
+            o1=identifiers["organization"].generate(
                 case=id(scenario.cases["StudentOrg"]), named_id="o1"
             )["id"],
-            o2=identifiers["organization"].record(
+            o2=identifiers["organization"].generate(
                 case=id(scenario.cases["StudentOrg"]), named_id="o2"
             )["id"],
         )
@@ -265,13 +266,13 @@ def test_scenarios_stack_case_data(identifiers, sources, student_factory):
         | {s2}  | Ted        |
         | {as1} | Napoleon   |
         """.format(
-            s1=identifiers["student"].record(
+            s1=identifiers["student"].generate(
                 case=id(scenario.cases["SimpleStudent"]), named_id="s1"
             )["id"],
-            s2=identifiers["student"].record(
+            s2=identifiers["student"].generate(
                 case=id(scenario.cases["SimpleStudent"]), named_id="s2"
             )["id"],
-            as1=identifiers["student"].record(
+            as1=identifiers["student"].generate(
                 case=id(scenario.cases["AltStudent"]), named_id="s1"
             )["id"],
         )
