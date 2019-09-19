@@ -85,6 +85,7 @@ SCHEMA = {
     "type": "object",
     "properties": {
         "version": {"type": "string"},
+        "description": {"type": "string"},
         "identifiers": {
             "type": "array",
             "minItems": 1,

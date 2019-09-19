@@ -3,10 +3,10 @@
 ---
 version: '0.1'
 description: |
-  Hello World example
+  HelloWorld - Simplest example of running dts
 
 sources:
-  - source: raw.students
+  - source: raw_students
 
 targets:
   - target: salutations
@@ -16,7 +16,7 @@ factories:
     description: Minimal example of what some student records may look like
 
     data:
-      - source: raw.students
+      - source: raw_students
         table: |
           | id | name   |
           | -  | -      |
@@ -43,6 +43,77 @@ scenarios:
                 | -  | -      | -           | -            |
                 | 1  | Buffy  | Scooby Gang | Hello Buffy  |
                 | 2  | Willow | Scooby Gang | Hello Willow |
+
+
+---
+version: '0.1'
+description: |
+  ExtraCaseFailure - Shows what happens if we add more cases without identifiers
+  We suppose that the Scooby Gang is still the canonical student example, but
+  we want to test out what would happen to the villian records
+
+
+sources:
+  - source: raw_students
+
+targets:
+  - target: salutations
+
+factories:
+  - factory: SomeStudents
+    description: Minimal example of what some student records may look like
+
+    data:
+      - source: raw_students
+        table: |
+          | id | name   |
+          | -  | -      |
+          | 1  | Buffy  |
+          | 2  | Willow |
+        values:
+          - column: clique
+            value: Scooby Gang
+
+scenarios:
+  - scenario: Hello World
+    description: The simplest scenario
+    factories:
+      - SomeStudents
+
+    cases:
+      - case: HelloGang
+        description: Make sure we say hello to everyone
+        expected:
+          data:
+            - target: salutations
+              table: |
+                | id | name   | clique      | salutation   |
+                | -  | -      | -           | -            |
+                | 1  | Buffy  | Scooby Gang | Hello Buffy  |
+                | 2  | Willow | Scooby Gang | Hello Willow |
+
+      - case: GoodbyeVillians
+        description: Say goodbye to villians
+        factory:
+          data:
+            - source: raw_students
+              table: |
+                | id | name     |
+                | -  | -        |
+                | 1  | Drusilla |
+                | 2  | Harmony  |
+              values:
+                - column: clique
+                  value: Vampires
+
+        expected:
+          data:
+            - target: salutations
+              table: |
+                | id | name     | clique   | salutation       |
+                | -  | -        | -        | -                |
+                | 1  | Drusilla | Vampires | Goodbye Drusilla |
+                | 2  | Harmony  | Vampires | Goodbye Harmony  |
 
 
 
