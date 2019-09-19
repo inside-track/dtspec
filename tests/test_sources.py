@@ -1,7 +1,7 @@
 import pytest
 
 import dts.core
-from dts.core import markdown_to_df, Identifier, Source
+from dts.core import markdown_to_df, Identifier, Source, Case
 
 from tests import assert_frame_equal
 
@@ -27,9 +27,14 @@ def simple_source(identifiers):
     )
 
 
-def test_identifers_are_translated(simple_source, identifiers):
+@pytest.fixture
+def cases():
+    return [Case(name="TestCase1"), Case(name="TestCase2")]
+
+
+def test_identifers_are_translated(simple_source, identifiers, cases):
     simple_source.stack(
-        "TestCase",
+        cases[0],
         markdown_to_df(
             """
         | id | first_name |
@@ -48,16 +53,16 @@ def test_identifers_are_translated(simple_source, identifiers):
         | {s1} | Bob        |
         | {s2} | Nancy      |
         """.format(
-            s1=identifiers["student"].generate(case="TestCase", named_id="s1")["id"],
-            s2=identifiers["student"].generate(case="TestCase", named_id="s2")["id"],
+            s1=identifiers["student"].generate(case=cases[0], named_id="s1")["id"],
+            s2=identifiers["student"].generate(case=cases[0], named_id="s2")["id"],
         )
     )
     assert_frame_equal(actual, expected)
 
 
-def test_sources_stack(simple_source, identifiers):
+def test_sources_stack(simple_source, identifiers, cases):
     simple_source.stack(
-        "TestCase1",
+        cases[0],
         markdown_to_df(
             """
         | id | first_name |
@@ -69,7 +74,7 @@ def test_sources_stack(simple_source, identifiers):
     )
 
     simple_source.stack(
-        "TestCase2",
+        cases[1],
         markdown_to_df(
             """
         | id | first_name |
@@ -90,18 +95,18 @@ def test_sources_stack(simple_source, identifiers):
         | {s21} | Bobob      |
         | {s22} | Nanci      |
         """.format(
-            s11=identifiers["student"].generate(case="TestCase1", named_id="s1")["id"],
-            s12=identifiers["student"].generate(case="TestCase1", named_id="s2")["id"],
-            s21=identifiers["student"].generate(case="TestCase2", named_id="s1")["id"],
-            s22=identifiers["student"].generate(case="TestCase2", named_id="s2")["id"],
+            s11=identifiers["student"].generate(case=cases[0], named_id="s1")["id"],
+            s12=identifiers["student"].generate(case=cases[0], named_id="s2")["id"],
+            s21=identifiers["student"].generate(case=cases[1], named_id="s1")["id"],
+            s22=identifiers["student"].generate(case=cases[1], named_id="s2")["id"],
         )
     )
     assert_frame_equal(actual, expected)
 
 
-def test_data_converts_to_json(simple_source, identifiers):
+def test_data_converts_to_json(simple_source, identifiers, cases):
     simple_source.stack(
-        "TestCase",
+        cases[0],
         markdown_to_df(
             """
         | id | first_name |
@@ -115,11 +120,11 @@ def test_data_converts_to_json(simple_source, identifiers):
     actual = simple_source.serialize()
     expected = [
         {
-            "id": identifiers["student"].generate(case="TestCase", named_id="s1")["id"],
+            "id": identifiers["student"].generate(case=cases[0], named_id="s1")["id"],
             "first_name": "Bob",
         },
         {
-            "id": identifiers["student"].generate(case="TestCase", named_id="s2")["id"],
+            "id": identifiers["student"].generate(case=cases[0], named_id="s2")["id"],
             "first_name": "Nancy",
         },
     ]
@@ -127,14 +132,14 @@ def test_data_converts_to_json(simple_source, identifiers):
     assert actual == expected
 
 
-def test_setting_defaults(identifiers):
+def test_setting_defaults(identifiers, cases):
     source = Source(
         defaults={"last_name": "Jones"},
         id_mapping={"id": {"identifier": identifiers["student"], "attribute": "id"}},
     )
 
     source.stack(
-        "TestCase",
+        cases[0],
         markdown_to_df(
             """
         | id | first_name |
@@ -153,21 +158,21 @@ def test_setting_defaults(identifiers):
         | {s1} | Bob        | Jones     |
         | {s2} | Nancy      | Jones     |
         """.format(
-            s1=identifiers["student"].generate(case="TestCase", named_id="s1")["id"],
-            s2=identifiers["student"].generate(case="TestCase", named_id="s2")["id"],
+            s1=identifiers["student"].generate(case=cases[0], named_id="s1")["id"],
+            s2=identifiers["student"].generate(case=cases[0], named_id="s2")["id"],
         )
     )
     assert_frame_equal(actual, expected)
 
 
-def test_overriding_defaults(identifiers):
+def test_overriding_defaults(identifiers, cases):
     source = Source(
         defaults={"last_name": "Jones"},
         id_mapping={"id": {"identifier": identifiers["student"], "attribute": "id"}},
     )
 
     source.stack(
-        "TestCase",
+        cases[0],
         markdown_to_df(
             """
         | id | first_name | last_name |
@@ -186,14 +191,14 @@ def test_overriding_defaults(identifiers):
         | {s1} | Bob        | Not Jones |
         | {s2} | Nancy      | Not Jones |
         """.format(
-            s1=identifiers["student"].generate(case="TestCase", named_id="s1")["id"],
-            s2=identifiers["student"].generate(case="TestCase", named_id="s2")["id"],
+            s1=identifiers["student"].generate(case=cases[0], named_id="s1")["id"],
+            s2=identifiers["student"].generate(case=cases[0], named_id="s2")["id"],
         )
     )
     assert_frame_equal(actual, expected)
 
 
-def test_identifier_defaults(identifiers):
+def test_identifier_defaults(identifiers, cases):
     source = Source(
         defaults={
             "organization_id": {
@@ -205,7 +210,7 @@ def test_identifier_defaults(identifiers):
     )
 
     source.stack(
-        "TestCase",
+        cases[0],
         markdown_to_df(
             """
         | id | first_name |
@@ -218,7 +223,7 @@ def test_identifier_defaults(identifiers):
 
     anonymous_ids = [
         v["id"]
-        for v in identifiers["organization"].cases["TestCase"].named_ids.values()
+        for v in identifiers["organization"].cached_ids[id(cases[0])].named_ids.values()
     ]
 
     actual = source.data
@@ -229,8 +234,8 @@ def test_identifier_defaults(identifiers):
         | {s1} | Bob        | {o1}            |
         | {s2} | Nancy      | {o2}            |
         """.format(
-            s1=identifiers["student"].generate(case="TestCase", named_id="s1")["id"],
-            s2=identifiers["student"].generate(case="TestCase", named_id="s2")["id"],
+            s1=identifiers["student"].generate(case=cases[0], named_id="s1")["id"],
+            s2=identifiers["student"].generate(case=cases[0], named_id="s2")["id"],
             o1=anonymous_ids[0],
             o2=anonymous_ids[1],
         )
@@ -238,13 +243,13 @@ def test_identifier_defaults(identifiers):
     assert_frame_equal(actual, expected)
 
 
-def test_setting_values(identifiers):
+def test_setting_values(identifiers, cases):
     source = Source(
         id_mapping={"id": {"identifier": identifiers["student"], "attribute": "id"}}
     )
 
     source.stack(
-        "TestCase",
+        cases[0],
         markdown_to_df(
             """
         | id | first_name |
@@ -264,21 +269,21 @@ def test_setting_values(identifiers):
         | {s1} | Bob        | Summers   |
         | {s2} | Nancy      | Summers   |
         """.format(
-            s1=identifiers["student"].generate(case="TestCase", named_id="s1")["id"],
-            s2=identifiers["student"].generate(case="TestCase", named_id="s2")["id"],
+            s1=identifiers["student"].generate(case=cases[0], named_id="s1")["id"],
+            s2=identifiers["student"].generate(case=cases[0], named_id="s2")["id"],
         )
     )
     assert_frame_equal(actual, expected)
 
 
-def test_setting_defaults_and_values(identifiers):
+def test_setting_defaults_and_values(identifiers, cases):
     source = Source(
         defaults={"last_name": "Jones", "gender": "X"},
         id_mapping={"id": {"identifier": identifiers["student"], "attribute": "id"}},
     )
 
     source.stack(
-        "TestCase",
+        cases[0],
         markdown_to_df(
             """
         | id | first_name |
@@ -298,8 +303,8 @@ def test_setting_defaults_and_values(identifiers):
         | {s1} | Bob        | Summers   | X      |
         | {s2} | Nancy      | Summers   | X      |
         """.format(
-            s1=identifiers["student"].generate(case="TestCase", named_id="s1")["id"],
-            s2=identifiers["student"].generate(case="TestCase", named_id="s2")["id"],
+            s1=identifiers["student"].generate(case=cases[0], named_id="s1")["id"],
+            s2=identifiers["student"].generate(case=cases[0], named_id="s2")["id"],
         )
     )
     assert_frame_equal(actual, expected)
@@ -319,9 +324,9 @@ def source_w_multiple_ids(identifiers):
     )
 
 
-def test_multiple_identifers_are_translated(source_w_multiple_ids, identifiers):
+def test_multiple_identifers_are_translated(source_w_multiple_ids, identifiers, cases):
     source_w_multiple_ids.stack(
-        "TestCase",
+        cases[0],
         markdown_to_df(
             """
         | id | uuid | organization_id |first_name  |
@@ -340,22 +345,20 @@ def test_multiple_identifers_are_translated(source_w_multiple_ids, identifiers):
         | {s1} | {su1} | {o1}            | Bob        |
         | {s2} | {su2} | {o1}            | Nancy      |
         """.format(
-            s1=identifiers["student"].generate(case="TestCase", named_id="s1")["id"],
-            s2=identifiers["student"].generate(case="TestCase", named_id="s2")["id"],
-            su1=identifiers["student"].generate(case="TestCase", named_id="s1")["uuid"],
-            su2=identifiers["student"].generate(case="TestCase", named_id="s2")["uuid"],
-            o1=identifiers["organization"].generate(case="TestCase", named_id="o1")[
-                "id"
-            ],
+            s1=identifiers["student"].generate(case=cases[0], named_id="s1")["id"],
+            s2=identifiers["student"].generate(case=cases[0], named_id="s2")["id"],
+            su1=identifiers["student"].generate(case=cases[0], named_id="s1")["uuid"],
+            su2=identifiers["student"].generate(case=cases[0], named_id="s2")["uuid"],
+            o1=identifiers["organization"].generate(case=cases[0], named_id="o1")["id"],
         )
     )
     assert_frame_equal(actual, expected)
 
 
-def test_all_identifying_columns_must_be_present(source_w_multiple_ids):
-    with pytest.raises(dts.core.IdentifierWithoutColumnError):
+def test_all_identifying_columns_must_be_present(source_w_multiple_ids, cases):
+    with pytest.raises(dts.core.IdentifierWithoutColumnError) as excinfo:
         source_w_multiple_ids.stack(
-            "TestCase",
+            cases[0],
             markdown_to_df(
                 """
             | id | first_name  |
@@ -366,8 +369,11 @@ def test_all_identifying_columns_must_be_present(source_w_multiple_ids):
             ),
         )
 
+    # Error message contains a readable case name
+    assert "TestCase1" in str(excinfo.value).split("\n")[0]
 
-def test_source_without_identifier_generates_data():
+
+def test_source_without_identifier_generates_data(cases):
     table = """
         | date       | season      |
         | -          | -           |
@@ -376,14 +382,14 @@ def test_source_without_identifier_generates_data():
     """
 
     source = Source()
-    source.stack("TestCase", markdown_to_df(table))
+    source.stack(cases[0], markdown_to_df(table))
 
     actual = source.data
     expected = markdown_to_df(table)
     assert_frame_equal(actual, expected)
 
 
-def test_source_without_identifer_not_stacked():
+def test_source_without_identifer_not_stacked(cases):
     table = """
         | date       | season      |
         | -          | -           |
@@ -392,18 +398,18 @@ def test_source_without_identifer_not_stacked():
     """
 
     source = Source()
-    source.stack("TestCase", markdown_to_df(table))
-    source.stack("TestCase", markdown_to_df(table))
+    source.stack(cases[0], markdown_to_df(table))
+    source.stack(cases[0], markdown_to_df(table))
 
     actual = source.data
     expected = markdown_to_df(table)
     assert_frame_equal(actual, expected)
 
 
-def test_source_without_identifer_raises_if_data_changes():
+def test_source_without_identifer_raises_if_data_changes(cases):
     source = Source()
     source.stack(
-        "TestCase",
+        cases[0],
         markdown_to_df(
             """
             | date       | season      |
@@ -414,9 +420,9 @@ def test_source_without_identifer_raises_if_data_changes():
         ),
     )
 
-    with pytest.raises(dts.core.CannotStackStaticSourceError):
+    with pytest.raises(dts.core.CannotStackStaticSourceError) as excinfo:
         source.stack(
-            "TestCase",
+            cases[0],
             markdown_to_df(
                 """
                 | date       | season      |
@@ -426,3 +432,6 @@ def test_source_without_identifer_raises_if_data_changes():
             """
             ),
         )
+
+    # Error message contains a readable case name
+    assert "TestCase1" in str(excinfo.value).split("\n")[0]

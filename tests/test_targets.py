@@ -2,7 +2,7 @@ import copy
 import pytest
 
 import dts.core
-from dts.core import markdown_to_df, Identifier, Target
+from dts.core import markdown_to_df, Identifier, Target, Case
 
 from tests import assert_frame_equal
 
@@ -26,20 +26,17 @@ def simple_target(identifiers):
 
 
 @pytest.fixture
-def stu(identifiers):
+def cases():
+    return [Case(name="TestCase1"), Case(name="TestCase2")]
+
+
+@pytest.fixture
+def stu(identifiers, cases):
     return {
-        "c1stu1": identifiers["student"].generate(case="TestCase1", named_id="stu1")[
-            "id"
-        ],
-        "c1stu2": identifiers["student"].generate(case="TestCase1", named_id="stu2")[
-            "id"
-        ],
-        "c2stu1": identifiers["student"].generate(case="TestCase2", named_id="stu1")[
-            "id"
-        ],
-        "c2stu2": identifiers["student"].generate(case="TestCase2", named_id="stu2")[
-            "id"
-        ],
+        "c1stu1": identifiers["student"].generate(case=cases[0], named_id="stu1")["id"],
+        "c1stu2": identifiers["student"].generate(case=cases[0], named_id="stu2")["id"],
+        "c2stu1": identifiers["student"].generate(case=cases[1], named_id="stu1")["id"],
+        "c2stu2": identifiers["student"].generate(case=cases[1], named_id="stu2")["id"],
     }
 
 
@@ -71,10 +68,10 @@ def test_actual_data_is_loaded_ids_translated(simple_target, simple_data):
     assert_frame_equal(actual, expected)
 
 
-def test_target_can_be_split_into_case(simple_target, simple_data):
+def test_target_can_be_split_into_case(simple_target, simple_data, cases):
     simple_target.load_actual(simple_data)
 
-    actual = simple_target.case_data("TestCase2")
+    actual = simple_target.case_data(cases[1])
     expected = markdown_to_df(
         """
         | id   | first_name |

@@ -96,11 +96,10 @@ def test_running_transformer_with_source_data(api, source_data):
     results = run_transformer(source_data)
 
     def stu(case_name, named_id):
-        case_id = id(
-            api.spec["scenarios"]["DenormalizingStudentClasses"].cases[case_name]
-        )
+        case = api.spec["scenarios"]["DenormalizingStudentClasses"].cases[case_name]
+
         return api.spec["identifiers"]["students"].generate(
-            case=case_id, named_id=named_id
+            case=case, named_id=named_id
         )["external_id"]
 
     expected = markdown_to_df(

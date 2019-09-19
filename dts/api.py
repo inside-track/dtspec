@@ -379,11 +379,12 @@ class Api:
                 )
 
             self.spec["scenarios"][scenario_name] = Scenario(
+                name=scenario_name,
                 cases=self._parse_spec_cases(
                     scenario_json["cases"],
                     scenario_json.get("factories", []),
                     scenario_name,
-                )
+                ),
             )
 
     def _parse_spec_cases(self, cases_json, scenario_factories, scenario_name):
@@ -397,9 +398,10 @@ class Api:
 
             case_data = self._parse_spec_factory_data(
                 case_json.get("factory", {}).get("data", []),
-                f"Case Factory: {case_name}",
+                f"<Case Factory> {scenario_name}: {case_name}",
             )
             cases[case_name] = Case(
+                name=f"{scenario_name}: {case_name}",
                 factory=Factory(
                     sources=self.spec["sources"],
                     inherit_from=[

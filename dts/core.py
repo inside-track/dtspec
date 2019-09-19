@@ -111,7 +111,7 @@ class UnableToFindNamedIdError(Exception):
 class Identifier:
     def __init__(self, attributes):
         self.attributes = attributes
-        self.cases = {}
+        self.cached_ids = {}
 
         self.generators = {}
         for attr, props in self.attributes.items():
@@ -121,24 +121,25 @@ class Identifier:
             )
 
     def generate(self, case, named_id):
-        if case not in self.cases:
-            self.cases[case] = SimpleNamespace(named_ids={})
+        case_id = id(case)
+        if case_id not in self.cached_ids:
+            self.cached_ids[case_id] = SimpleNamespace(named_ids={}, case=case)
 
-        if named_id not in self.cases[case].named_ids:
-            self.cases[case].named_ids[named_id] = {}
+        if named_id not in self.cached_ids[case_id].named_ids:
+            self.cached_ids[case_id].named_ids[named_id] = {}
             for attr, generator in self.generators.items():
-                self.cases[case].named_ids[named_id][attr] = generator()
+                self.cached_ids[case_id].named_ids[named_id][attr] = generator()
 
-        return self.cases[case].named_ids[named_id]
+        return self.cached_ids[case_id].named_ids[named_id]
 
     def find(self, attribute, raw_id):
         "Given an attribute and a raw id, return named attribute and case"
         found = SimpleNamespace(named_id=None, case=None)
-        for case_name, case in self.cases.items():
+        for case_name, case in self.cached_ids.items():
             for named_id, attributes in case.named_ids.items():
                 if attributes[attribute] == raw_id:
                     found.named_id = named_id
-                    found.case = case_name
+                    found.case = case.case
                     return found
 
         raise UnableToFindNamedIdError(
@@ -180,7 +181,7 @@ class Source:
         else:
             if len(self.data) > 0 and not _frame_is_equal(self.data, w_defaults_df):
                 raise CannotStackStaticSourceError(
-                    f'In case f"{case}", attempting to stack data onto source without identifiers:\n {data}'
+                    f'In case "{case.name}", attempting to stack data onto source without identifiers:\n {data}'
                 )
             self.data = w_defaults_df
 
@@ -209,7 +210,7 @@ class Source:
         missing_columns = set(self.id_mapping.keys()) - set(df.columns)
         if len(missing_columns) > 0:
             raise IdentifierWithoutColumnError(
-                f'In case "{case}", data source is missing columns corresponding to identifier attributes: {missing_columns}'
+                f'In case "{case.name}", data source is missing columns corresponding to identifier attributes: {missing_columns}'
             )
 
         for column, mapto in self.id_mapping.items():
@@ -258,7 +259,7 @@ class Target:
             return self.data
 
         return (
-            self.data[self.data["__dts_case__"] == case]
+            self.data[self.data["__dts_case__"].apply(id) == id(case)]
             .drop(columns="__dts_case__")
             .reset_index(drop=True)
         )
@@ -316,20 +317,22 @@ class DuplicateCaseError(Exception):
 
 
 class Scenario:  # pylint: disable=too-few-public-methods
-    def __init__(self, cases=None):
+    def __init__(self, name=None, cases=None):
+        self.name = name or f"None - {id(self)}"
         self.cases = cases or {}
 
     def generate(self):
         for _case_name, case in self.cases.items():
-            case.factory.generate(id(case))
+            case.factory.generate(case)
 
 
 class Case:  # pylint: disable=too-few-public-methods
-    def __init__(self, factory=None, expectations=None):
+    def __init__(self, name=None, factory=None, expectations=None):
+        self.name = name or f"None - {id(self)}"
         self.factory = factory
         self.expectations = expectations or []
 
     def assert_expectations(self):
         for expectation in self.expectations:
-            expectation.load_actual(expectation.target.case_data(id(self)))
+            expectation.load_actual(expectation.target.case_data(self))
             expectation.assert_expected()
