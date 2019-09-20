@@ -1,0 +1,91 @@
+---
+version: '0.1'
+description: |
+  MultipleCases - Multiple cases require creating identifiers and associating them
+  with sources and targets.
+
+
+identifiers:
+  - identifier: students
+    attributes:
+      - field: id
+        generator: unique_integer
+
+sources:
+  - source: raw_students
+    identifier_map:
+      - column: id
+        identifier:
+          name: students
+          attribute: id
+
+
+targets:
+  - target: salutations
+    identifier_map:
+      - column: id
+        identifier:
+          name: students
+          attribute: id
+
+factories:
+  - factory: SomeStudents
+    description: Minimal example of what some student records may look like
+
+    data:
+      - source: raw_students
+        table: |
+          | id | name   |
+          | -  | -      |
+          | 1  | Buffy  |
+          | 2  | Willow |
+        values:
+          - column: clique
+            value: Scooby Gang
+
+scenarios:
+  - scenario: Hello World
+    description: The simplest scenario
+    factories:
+      - SomeStudents
+
+    cases:
+      - case: HelloGang
+        description: Make sure we say hello to everyone
+        expected:
+          data:
+            - target: salutations
+              table: |
+                | id | name   | clique      | salutation   |
+                | -  | -      | -           | -            |
+                | 1  | Buffy  | Scooby Gang | Hello Buffy  |
+                | 2  | Willow | Scooby Gang | Hello Willow |
+
+      - case: GoodbyeVillians
+        description: Say goodbye to villians
+        factory:
+          # The ids here might be the same as above.  However, these are just named
+          # references and get translated into unique ids when the source data
+          # is generated.
+          data:
+            - source: raw_students
+              table: |
+                | id | name     |
+                | -  | -        |
+                | 1  | Drusilla |
+                | 2  | Harmony  |
+              values:
+                - column: clique
+                  value: Vampires
+
+        expected:
+          data:
+            # Again, the ids here are not the actual ids sent to dts after performing
+            # the transformations.  They are just named references and dts
+            # keeps track of the relationship between the actual ids and the named ones.
+            - target: salutations
+              table: |
+                | id | name     | clique   | salutation       |
+                | -  | -        | -        | -                |
+                | 1  | Drusilla | Vampires | Goodbye Drusilla |
+                | 2  | Harmony  | Vampires | Goodbye Harmony  |

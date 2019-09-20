@@ -2,13 +2,62 @@
 
 API for generating test seed data and performing data transformation assertions.
 
-## Developer setup
+## Introduction
 
-    conda create --name dts python=3.6
-    source activate dts
+So here's a yaml file
 
-    pip install pip-tools
-    pip install --ignore-installed -r requirements.txt
+
+
+````yaml
+---
+version: '0.1'
+description: |
+  HelloWorld - Simplest example of running dts
+
+sources:
+  - source: raw_students
+
+targets:
+  - target: salutations
+
+factories:
+  - factory: SomeStudents
+    description: Minimal example of what some student records may look like
+
+    data:
+      - source: raw_students
+        table: |
+          | id | name   |
+          | -  | -      |
+          | 1  | Buffy  |
+          | 2  | Willow |
+        # Use values to populate a constant over all records
+        values:
+          - column: clique
+            value: Scooby Gang
+
+scenarios:
+  - scenario: Hello World
+    description: The simplest scenario
+    factories:
+      - SomeStudents
+
+    cases:
+      - case: HelloGang
+        description: Make sure we say hello to everyone
+        expected:
+          data:
+            - target: salutations
+              table: |
+                | id | name   | clique      | salutation   |
+                | -  | -      | -           | -            |
+                | 1  | Buffy  | Scooby Gang | Hello Buffy  |
+                | 2  | Willow | Scooby Gang | Hello Willow |
+````
+
+
+## Tutorial
+
 
 ## Design Principles
 
@@ -52,3 +101,14 @@ Identifiers are used to identify specific records and group them into test cases
 Identifiers are shared across all scenarios
 
 Note that dts treats all data as string, but this will be a string that can be converted
+
+
+## Contributing
+
+## Developer setup
+
+    conda create --name dts python=3.6
+    source activate dts
+
+    pip install pip-tools
+    pip install --ignore-installed -r requirements.txt

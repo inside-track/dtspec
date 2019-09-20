@@ -12,8 +12,6 @@ from tests import assert_frame_equal
 
 # pylint: disable=redefined-outer-name
 
-# TODO: rename to test_api_features
-
 
 def parse_sources(sources):
     "Converts test data returned from dts api into Pandas dataframes"
@@ -33,7 +31,7 @@ def serialize_actuals(actuals):
     }
 
 
-def hello_word_transformer(raw_students):
+def hello_world_transformer(raw_students):
     def salutation(row):
         if row["clique"] == "Scooby Gang":
             return "Hello {}".format(row["name"])
@@ -83,47 +81,57 @@ def realistic_transformer(
 
 
 @pytest.fixture
-def specs():
-    all_specs = yaml.safe_load_all(open("tests/tutorial_spec.yml"))
-    return {spec["description"].split("-")[0].strip(): spec for spec in all_specs}
+def spec():
+    return yaml.safe_load(open("tests/realistic.yml"))
+
 
 @pytest.fixture
-def api(specs):
-    api = dts.api.Api(specs["Realistic"])
+def api(spec):
+    api = dts.api.Api(spec)
     api.generate_sources()
     return api
 
-def test_source_data_stacks_for_every_case(api):
-    sources_data = parse_sources(api.spec["sources"])
 
+@pytest.fixture
+def sources_data(api):
+    return parse_sources(api.spec["sources"])
+
+
+@pytest.fixture
+def serialized_actuals(sources_data):
+    actual_data = realistic_transformer(**sources_data)
+    serialized_actuals = serialize_actuals(actual_data)
+    return serialized_actuals
+
+
+@pytest.fixture
+def api_w_actuals(api, serialized_actuals):
+    api.load_actuals(serialized_actuals)
+    return api
+
+
+def test_source_data_stacks_for_every_case(api, sources_data):
     actual = len(sources_data["raw_schools"])
     n_cases = sum([len(scenario.cases) for scenario in api.spec["scenarios"].values()])
     expected = n_cases * 2
     assert actual == expected
 
-def test_stacked_source_data_has_unique_identifiers(api):
-    sources_data = parse_sources(api.spec["sources"])
 
-    student_ids =  sources_data["raw_students"]["id"]
+def test_stacked_source_data_has_unique_identifiers(sources_data):
+    student_ids = sources_data["raw_students"]["id"]
     expected = len(student_ids)
     actual = len(set(student_ids))
     assert actual == expected
 
-def test_source_without_identifer_not_stacked(api):
-    sources_data = parse_sources(api.spec["sources"])
 
+def test_source_without_identifer_not_stacked(sources_data):
     actual = len(sources_data["dim_date"])
     expected = 4
     assert actual == expected
 
 
-def test_actuals_are_loaded(api):
-    sources_data = parse_sources(api.spec["sources"])
-
-    sources_data = parse_sources(api.spec["sources"])
-    actual_data = realistic_transformer(**sources_data)
-    serialized_actuals = serialize_actuals(actual_data)
-    api.load_actuals(serialized_actuals)
+def test_actuals_are_loaded(api_w_actuals):
+    api = api_w_actuals
 
     expected = markdown_to_df(
         """
@@ -148,22 +156,19 @@ def test_actuals_are_loaded(api):
     assert_frame_equal(actual, expected)
 
 
-def test_passing_expectation(api):
-    sources_data = parse_sources(api.spec["sources"])
-
-    sources_data = parse_sources(api.spec["sources"])
-    actual_data = realistic_transformer(**sources_data)
-    serialized_actuals = serialize_actuals(actual_data)
-    api.load_actuals(serialized_actuals)
-
+def test_passing_expectation(api_w_actuals):
+    api = api_w_actuals
 
     api.spec["scenarios"]["DenormalizingStudentClasses"].cases[
         "MissingClasses"
     ].assert_expectations()
 
 
-def test_failing_expectation(api):
-    sources_data = parse_sources(api.spec["sources"])
+def test_all_passing_exceptions(api_w_actuals):
+    api_w_actuals.run_assertions()
+
+
+def test_failing_expectation(api, sources_data):
     actual_data = realistic_transformer(**sources_data, exclude_missing_classes=False)
     serialized_actuals = serialize_actuals(actual_data)
     api.load_actuals(serialized_actuals)
@@ -174,38 +179,26 @@ def test_failing_expectation(api):
         ].assert_expectations()
 
 
-
-
-def test_hello_world_spec(specs):
-    api = dts.api.Api(specs["HelloWorld"])
+def test_hello_world_spec():
+    spec = yaml.safe_load(open("tests/hello_world.yml"))
+    api = dts.api.Api(spec)
     api.generate_sources()
 
     sources_data = parse_sources(api.spec["sources"])
-    actual_data = hello_word_transformer(**sources_data)
+    actual_data = hello_world_transformer(**sources_data)
     serialized_actuals = serialize_actuals(actual_data)
     api.load_actuals(serialized_actuals)
 
     api.run_assertions()
 
 
-def test_multiple_cases(specs):
-    api = dts.api.Api(specs["MultipleCases"])
+def test_hello_world_multiple_cases_spec():
+    spec = yaml.safe_load(open("tests/hello_world_multiple_cases.yml"))
+    api = dts.api.Api(spec)
     api.generate_sources()
 
     sources_data = parse_sources(api.spec["sources"])
-    actual_data = hello_word_transformer(**sources_data)
-    serialized_actuals = serialize_actuals(actual_data)
-    api.load_actuals(serialized_actuals)
-
-    api.run_assertions()
-
-
-def test_realistic(specs):
-    api = dts.api.Api(specs["Realistic"])
-    api.generate_sources()
-
-    sources_data = parse_sources(api.spec["sources"])
-    actual_data = realistic_transformer(**sources_data)
+    actual_data = hello_world_transformer(**sources_data)
     serialized_actuals = serialize_actuals(actual_data)
     api.load_actuals(serialized_actuals)
 

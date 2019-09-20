@@ -1,0 +1,44 @@
+---
+version: '0.1'
+description: |
+  HelloWorld - Simplest example of running dts
+
+sources:
+  - source: raw_students
+
+targets:
+  - target: salutations
+
+factories:
+  - factory: SomeStudents
+    description: Minimal example of what some student records may look like
+
+    data:
+      - source: raw_students
+        table: |
+          | id | name   |
+          | -  | -      |
+          | 1  | Buffy  |
+          | 2  | Willow |
+        # Use values to populate a constant over all records
+        values:
+          - column: clique
+            value: Scooby Gang
+
+scenarios:
+  - scenario: Hello World
+    description: The simplest scenario
+    factories:
+      - SomeStudents
+
+    cases:
+      - case: HelloGang
+        description: Make sure we say hello to everyone
+        expected:
+          data:
+            - target: salutations
+              table: |
+                | id | name   | clique      | salutation   |
+                | -  | -      | -           | -            |
+                | 1  | Buffy  | Scooby Gang | Hello Buffy  |
+                | 2  | Willow | Scooby Gang | Hello Willow |
