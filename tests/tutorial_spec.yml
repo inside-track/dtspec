@@ -216,6 +216,12 @@ sources:
         identifier:
           name: students
           attribute: id
+    # source columns can be given defaults.  This can be useful when a source field shouldn't be
+    # blank and needs some sensible default.
+    defaults:
+      - column: start_date
+        value: '2002-06-01'
+
 
   # For some sources, it doesn't make sense to associate them with identifiers.
   # This is true when the source data does not change from one case to the next.
