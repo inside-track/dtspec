@@ -32,6 +32,12 @@ def serialize_actuals(actuals):
 
 
 def hello_world_transformer(raw_students):
+    salutations_df = raw_students.copy()
+    salutations_df["salutation"] = salutations_df['name'].apply(lambda v: 'Hello ' + v)
+
+    return {"salutations": salutations_df}
+
+def hello_world_multiple_transformer(raw_students):
     def salutation(row):
         if row["clique"] == "Scooby Gang":
             return "Hello {}".format(row["name"])
@@ -165,7 +171,7 @@ def test_passing_expectation(api_w_actuals):
 
 
 def test_all_passing_exceptions(api_w_actuals):
-    api_w_actuals.run_assertions()
+    api_w_actuals.assert_expectations()
 
 
 def test_failing_expectation(api, sources_data):
@@ -189,7 +195,7 @@ def test_hello_world_spec():
     serialized_actuals = serialize_actuals(actual_data)
     api.load_actuals(serialized_actuals)
 
-    api.run_assertions()
+    api.assert_expectations()
 
 
 def test_hello_world_multiple_cases_spec():
@@ -198,8 +204,8 @@ def test_hello_world_multiple_cases_spec():
     api.generate_sources()
 
     sources_data = parse_sources(api.spec["sources"])
-    actual_data = hello_world_transformer(**sources_data)
+    actual_data = hello_world_multiple_transformer(**sources_data)
     serialized_actuals = serialize_actuals(actual_data)
     api.load_actuals(serialized_actuals)
 
-    api.run_assertions()
+    api.assert_expectations()

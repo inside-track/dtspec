@@ -257,7 +257,7 @@ class Api:
         for target, records in actuals_json.items():
             self.spec["targets"][target].load_actual(records)
 
-    def run_assertions(self):
+    def assert_expectations(self):
         "Runs all of the assertions defined in the spec against the actual data"
         for _scenario_name, scenario in self.spec["scenarios"].items():
             for _case_name, case in scenario.cases.items():

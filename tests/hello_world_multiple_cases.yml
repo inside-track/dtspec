@@ -39,6 +39,7 @@ factories:
           | -  | -      |
           | 1  | Buffy  |
           | 2  | Willow |
+        # Use values to populate a constant over all records
         values:
           - column: clique
             value: Scooby Gang
