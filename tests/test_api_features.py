@@ -33,9 +33,10 @@ def serialize_actuals(actuals):
 
 def hello_world_transformer(raw_students):
     salutations_df = raw_students.copy()
-    salutations_df["salutation"] = salutations_df['name'].apply(lambda v: 'Hello ' + v)
+    salutations_df["salutation"] = salutations_df["name"].apply(lambda v: "Hello " + v)
 
     return {"salutations": salutations_df}
+
 
 def hello_world_multiple_transformer(raw_students):
     def salutation(row):

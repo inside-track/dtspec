@@ -45,7 +45,7 @@ factories:
             value: Scooby Gang
 
 scenarios:
-  - scenario: Hello World
+  - scenario: Hello World With Multiple Cases
     description: The simplest scenario
     factories:
       - SomeStudents
@@ -64,6 +64,7 @@ scenarios:
 
       - case: GoodbyeVillians
         description: Say goodbye to villians
+        # For this case, we tweak the factory defined for the scenario.
         factory:
           # The ids here might be the same as above.  However, these are just named
           # references and get translated into unique ids when the source data
@@ -75,6 +76,7 @@ scenarios:
                 | -  | -        |
                 | 1  | Drusilla |
                 | 2  | Harmony  |
+              # Use values to populate a constant over all records
               values:
                 - column: clique
                   value: Vampires

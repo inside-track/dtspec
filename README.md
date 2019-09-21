@@ -121,7 +121,7 @@ parse the YAML file, send it to the dts api, and have dts generate source data:
 import dts
 import yaml
 
-spec = yaml.safe_load(open("hello_world.yml"))
+spec = yaml.safe_load(open("tests/hello_world.yml"))
 api = dts.api.Api(spec)
 api.generate_sources()
 ````
@@ -179,7 +179,7 @@ api.assert_expectations()
 
 Putting all of this together:
 ````python
-spec = yaml.safe_load(open("hello_world.yml"))
+spec = yaml.safe_load(open("tests/hello_world.yml"))
 api = dts.api.Api(spec)
 api.generate_sources()
 
@@ -195,8 +195,8 @@ function and see how dts responds.
 ### Hello World With Multiple Test Cases
 
 Running tests with multiple cases that reference the same data sources
-introduces a complicating factor. One of the major reasons that makes
-it hard to build tests for for ETL/ELT is the fact that many data
+introduces a complicating factor. One of the reasons that makes
+it hard to build tests for ETL/ELT is the fact that many data
 transformation systems in use today have a high latency for even very
 small transformations.  For example, Redshift is a distributed RDBMS
 that can process billions of rows in minutes, millions of rows in
@@ -214,59 +214,250 @@ then loads this stacked data into their data transformation system
 **once**, runs the data transformations **once**, and then collects
 the resulting output **once**.
 
+Let's see how dts handles this in action.
+
+First, let's change our hello world data transformation a bit.  Instead of
+just saying hello to our heroes, let's say goodbye to any villians (as
+identified by a `clique` data field).
+
+````python
+def hello_world_multiple_transformer(raw_students):
+    def salutation(row):
+        if row["clique"] == "Scooby Gang":
+            return "Hello {}".format(row["name"])
+        return "Goodbye {}".format(row["name"])
+
+    salutations_df = raw_students.copy()
+    salutations_df["salutation"] = salutations_df.apply(salutation, axis=1)
+
+    return {"salutations": salutations_df}
+````
+
+While it would be possible to test saying hello or goodbye in a single
+case just by adding more records to the source data, we'll split it
+into two to demonstrate how multiple cases work.  Here's how the YAML would look:
+
+````yaml
+scenarios:
+  - scenario: Hello World With Multiple Cases
+    description: The simplest scenario
+    factories:
+      - SomeStudents
+
+    cases:
+      - case: HelloGang
+        description: Make sure we say hello to everyone
+        expected:
+          data:
+            - target: salutations
+              table: |
+                | id | name   | clique      | salutation   |
+                | -  | -      | -           | -            |
+                | 1  | Buffy  | Scooby Gang | Hello Buffy  |
+                | 2  | Willow | Scooby Gang | Hello Willow |
+
+      - case: GoodbyeVillians
+        description: Say goodbye to villians
+        # For this case, we tweak the factory defined for the scenario.
+        factory:
+          # The ids here might be the same as above.  However, these are just named
+          # references and get translated into unique ids when the source data
+          # is generated.
+          data:
+            - source: raw_students
+              table: |
+                | id | name     |
+                | -  | -        |
+                | 1  | Drusilla |
+                | 2  | Harmony  |
+              # Use values to populate a constant over all records
+              values:
+                - column: clique
+                  value: Vampires
+
+        expected:
+          data:
+            # Again, the ids here are not the actual ids sent to dts after performing
+            # the transformations.  They are just named references and dts
+            # keeps track of the relationship between the actual ids and the named ones.
+            - target: salutations
+              table: |
+                | id | name     | clique   | salutation       |
+                | -  | -        | -        | -                |
+                | 1  | Drusilla | Vampires | Goodbye Drusilla |
+                | 2  | Harmony  | Vampires | Goodbye Harmony  |
+
+````
+
+This won't quite work as is, because we're missing something.  We have
+two cases that describe variations on the source data `raw_students`
+and the output `salutations`.  dts collects the source data
+definitions from each case and stacks them into a single data source.
+The user then run the transformations on that source and generates a
+single target to provide back to dts.  But dts has to know which record
+belongs to which case.  To do this, we have to define an
+**identifier** that tells dts which columns should be used to identify
+a record as belonging to a case.  A good identifier is often a primary
+key that uniquely defines a record, but it is not strictly required to
+be unique across all records.
+
+For this example, we'll define an identifier called "students" with a single
+**identifier attribute** called `id` that is a unique integer:
+
+````yaml
+identifiers:
+  - identifier: students
+    attributes:
+      - field: id
+        generator: unique_integer
+````
+
+We tell dts that this identifier is associated with the `id` columns of both
+the source and the target via:
+
+````yaml
+sources:
+  - source: raw_students
+    identifier_map:
+      - column: id
+        identifier:
+          name: students
+          attribute: id
+
+
+targets:
+  - target: salutations
+    identifier_map:
+      - column: id
+        identifier:
+          name: students
+          attribute: id
+````
+
+With the sources and targets with identifiers, the values we see in
+the source factories and target expectations are not the values that
+are actually used in the data.  Instead, they are simply **named
+refereces**.  For example, in the "HelloGang" case, `id=1` belongs to
+Buffy and `id=2` belongs to Willow.  But when dts generates the source
+data, the actual values may be 3 and 9, or 4 and 7, or something else.
+Unique values are not generated in any deterministic manner -- each
+run of dts can give a diferent set.  dts only guarantees that the
+each named reference will be a unique integer (via the `generator`
+defined in the `identifier` section).
+
+Futhermore, in the second case called "GoodbyeVillians", we see that
+`id=1` belongs to Drusilla and `id=2` belongs to Harmony.  dts will
+generate unique values for this case as well, and they **will not**
+conflict with the values generated for the first case.  So dts will pass
+back to the user 4 total records (Buffy, Willow, Drusilla, Harmony) with 4
+different ids
+
+With the [full YAML spec](tests/hello_world_multiple_cases.yml) defined, we can
+run the assertions in the same fashion as the the earlier example
+
+````python
+spec = yaml.safe_load(open("tests/hello_world_multiple_cases.yml"))
+api = dts.api.Api(spec)
+api.generate_sources()
+
+sources_data = parse_sources(api.spec["sources"])
+actual_data = hello_world_multiple_transformer(**sources_data)
+serialized_actuals = serialize_actuals(actual_data)
+api.load_actuals(serialized_actuals)
+
+api.assert_expectations()
+````
 
 ### A More Realistic Example
+
+Finally, let's example a more realistic example that one might
+encounter when building a data warehouse.  In these situations, we'll
+have multiple sources, targets, scenarios, and cases.  Now suppose we
+have a students table, where every student belongs to a school and
+takes 0 to many classes.  Our goal is to create one denormalized table
+that combines all of these data sources into one table.  Additionally,
+we want to create a table that aggregates all of our students to give
+a count of the students per school.  In Pandas, the data transformation
+might look like:
+
+````python
+def realistic_transformer(raw_students, raw_schools, raw_classes, dim_date):
+
+    student_schools = raw_students.rename(
+        columns={"id": "student_id", "external_id": "card_id"}
+    ).merge(
+        raw_schools.rename(columns={"id": "school_id", "name": "school_name"}),
+        how="inner",
+        on="school_id",
+    )
+
+    student_classes = student_schools.merge(
+        raw_classes.rename(columns={"name": "class_name"}),
+        how="inner",
+        on="student_id",
+    ).merge(
+        dim_date.rename(columns={"date": "start_date"}), how="left", on="start_date"
+    )
+
+    students_per_school = (
+        student_schools.groupby(["school_name"])
+        .size()
+        .to_frame(name="number_of_students")
+        .reset_index()
+    )
+
+    return {
+        "student_classes": student_classes,
+        "students_per_school": students_per_school,
+    }
+````
+
+Given the [full YAML spec](tests/realistic.yml) defined, we can again run
+the data assertions using a familiar pattern:
+
+````python
+spec = yaml.safe_load(open("tests/realistic.yml"))
+api = dts.api.Api(spec)
+api.generate_sources()
+
+sources_data = parse_sources(api.spec["sources"])
+actual_data = hello_world_multiple_transformer(**sources_data)
+serialized_actuals = serialize_actuals(actual_data)
+api.load_actuals(serialized_actuals)
+
+api.assert_expectations()
+````
 
 
 
 ## Additional notes about dts
 
-
-All comparisons are done with strings.  Up to the user to enforce data types
-suitable to their data transformation system.
-
-A dts test spec describes a set of test *cases*, which are used to define
-data sources and the expected results following some set of data transformations.
-Test *cases* can be grouped into *scenarios* that share some common set of data
-sources or data targets.
-
-TODO: Docs from canonical spec that need to be cleaned up:
-
-A test spec is used to test the behavior of a single execution of a
-set of data transformations.  The data transformations may involve
-multiple steps with multiple data sources and targets.
-With dts, we define all of test source data and expectations up front.  If
-there are multiple test cases that use the same source data, then each test
-case will "stack" (concantenate) data for that source.
-
-After the test spec is defined, dts will respond will all of the stacked
-data sources.  The user will then inject those test data sources into whatever
-system they are using to run the data transformations.  They will then run
-the transformations and collect all of the resulting target data.
-
-The target data is then loaded back into the dts test api, and data assertions
-are run to ensure that the actual result data conforms to the
-expected data specified in the test spec.
-
-Factories will represent a collection of test data.
-Scenarios are a colletion of test cases that concern some shared topic.
-  - The code being tested is expected to run only 1 time for a scenario.
-  - One run could be associated with multiple scenarios, up to user to decide
-Cases will contain assertions about the results of a run
- - they can also contain additional conditions about data defined in a scenario
-
-Identifiers are used to identify specific records and group them into test cases
-Identifiers are shared across all scenarios
-
-Note that dts treats all data as string, but this will be a string that can be converted
-
+* At the moment, all source data values are generated as strings.  It
+  is up to the the user to enforce data types suitable to their data
+  transformation system.
+* Additionally, data expectations are stringified prior to running assertions.
 
 ## Contributing
 
+We welcome contributors!  Please submit any suggests or pull requests in Github.
+
 ### Developer setup
+
+Create an appropriate python environment.  I like [miniconda](https://conda.io/miniconda.html),
+but use whatever you like:
 
     conda create --name dts python=3.6
     source activate dts
 
+Then install pip packages
+
     pip install pip-tools
     pip install --ignore-installed -r requirements.txt
+
+run tests via
+
+    inv test
+
+and the linter via
+
+    inv lint
