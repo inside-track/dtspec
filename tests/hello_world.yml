@@ -1,0 +1,45 @@
+---
+version: '0.1'
+description: HelloWorld - Simplest example of running dts
+
+# The names of sources and targets is arbitrary, but it's up to the user to determine
+# how they get mapped to/from their data transformation system.
+sources:
+  - source: raw_students
+
+targets:
+  - target: salutations
+
+factories:
+  - factory: SomeStudents
+    description: Minimal example of what some student records may look like
+
+    data:
+      - source: raw_students
+        # Tables written as a markdown table
+        table: |
+          | id | name   |
+          | -  | -      |
+          | 1  | Buffy  |
+          | 2  | Willow |
+
+scenarios:
+  - scenario: Hello World
+    description: The simplest scenario
+    # All cases in this scenario will use this factory (which may be modified on case-by-case basis)
+    factories:
+      - SomeStudents
+
+    cases:
+      - case: HelloGang
+        description: Make sure we say hello to everyone
+        expected:
+          data:
+            - target: salutations
+              # The actual output may also contain the "name" field, but the expectation
+              # will ignore comparing any fields not listed in the expected table.
+              table: |
+                | id | salutation   |
+                | -  | -            |
+                | 1  | Hello Buffy  |
+                | 2  | Hello Willow |

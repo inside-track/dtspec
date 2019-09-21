@@ -102,10 +102,10 @@ def test_scenarios_generate_case_data(identifiers, sources, student_factory):
         | {s2} | Ted        |
         """.format(
             s1=identifiers["student"].generate(
-                case=id(scenario.cases["SimpleStudent"]), named_id="s1"
+                case=scenario.cases["SimpleStudent"], named_id="s1"
             )["id"],
             s2=identifiers["student"].generate(
-                case=id(scenario.cases["SimpleStudent"]), named_id="s2"
+                case=scenario.cases["SimpleStudent"], named_id="s2"
             )["id"],
         )
     )
@@ -137,10 +137,10 @@ def test_scenarios_generate_case_data_over_multiple_cases(
         | {s2} | Ted        |
         """.format(
             s1=identifiers["student"].generate(
-                case=id(scenario.cases["SimpleStudent"]), named_id="s1"
+                case=scenario.cases["SimpleStudent"], named_id="s1"
             )["id"],
             s2=identifiers["student"].generate(
-                case=id(scenario.cases["SimpleStudent"]), named_id="s2"
+                case=scenario.cases["SimpleStudent"], named_id="s2"
             )["id"],
         )
     )
@@ -155,10 +155,10 @@ def test_scenarios_generate_case_data_over_multiple_cases(
         | {o2} | Alaska Military Academy |
         """.format(
             o1=identifiers["organization"].generate(
-                case=id(scenario.cases["SimpleOrganization"]), named_id="o1"
+                case=scenario.cases["SimpleOrganization"], named_id="o1"
             )["id"],
             o2=identifiers["organization"].generate(
-                case=id(scenario.cases["SimpleOrganization"]), named_id="o2"
+                case=scenario.cases["SimpleOrganization"], named_id="o2"
             )["id"],
         )
     )
@@ -200,13 +200,13 @@ def test_scenario_case_factories_can_override(
         | {s2} | {o1}            | Ted        |
         """.format(
             s1=identifiers["student"].generate(
-                case=id(scenario.cases["StudentOrg"]), named_id="s1"
+                case=scenario.cases["StudentOrg"], named_id="s1"
             )["id"],
             s2=identifiers["student"].generate(
-                case=id(scenario.cases["StudentOrg"]), named_id="s2"
+                case=scenario.cases["StudentOrg"], named_id="s2"
             )["id"],
             o1=identifiers["organization"].generate(
-                case=id(scenario.cases["StudentOrg"]), named_id="o1"
+                case=scenario.cases["StudentOrg"], named_id="o1"
             )["id"],
         )
     )
@@ -221,10 +221,10 @@ def test_scenario_case_factories_can_override(
         | {o2} | Alaska Military Academy |
         """.format(
             o1=identifiers["organization"].generate(
-                case=id(scenario.cases["StudentOrg"]), named_id="o1"
+                case=scenario.cases["StudentOrg"], named_id="o1"
             )["id"],
             o2=identifiers["organization"].generate(
-                case=id(scenario.cases["StudentOrg"]), named_id="o2"
+                case=scenario.cases["StudentOrg"], named_id="o2"
             )["id"],
         )
     )
@@ -267,13 +267,13 @@ def test_scenarios_stack_case_data(identifiers, sources, student_factory):
         | {as1} | Napoleon   |
         """.format(
             s1=identifiers["student"].generate(
-                case=id(scenario.cases["SimpleStudent"]), named_id="s1"
+                case=scenario.cases["SimpleStudent"], named_id="s1"
             )["id"],
             s2=identifiers["student"].generate(
-                case=id(scenario.cases["SimpleStudent"]), named_id="s2"
+                case=scenario.cases["SimpleStudent"], named_id="s2"
             )["id"],
             as1=identifiers["student"].generate(
-                case=id(scenario.cases["AltStudent"]), named_id="s1"
+                case=scenario.cases["AltStudent"], named_id="s1"
             )["id"],
         )
     )

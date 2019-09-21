@@ -85,6 +85,7 @@ SCHEMA = {
     "type": "object",
     "properties": {
         "version": {"type": "string"},
+        "description": {"type": "string"},
         "identifiers": {
             "type": "array",
             "minItems": 1,
@@ -256,7 +257,7 @@ class Api:
         for target, records in actuals_json.items():
             self.spec["targets"][target].load_actual(records)
 
-    def run_assertions(self):
+    def assert_expectations(self):
         "Runs all of the assertions defined in the spec against the actual data"
         for _scenario_name, scenario in self.spec["scenarios"].items():
             for _case_name, case in scenario.cases.items():
@@ -378,11 +379,12 @@ class Api:
                 )
 
             self.spec["scenarios"][scenario_name] = Scenario(
+                name=scenario_name,
                 cases=self._parse_spec_cases(
                     scenario_json["cases"],
                     scenario_json.get("factories", []),
                     scenario_name,
-                )
+                ),
             )
 
     def _parse_spec_cases(self, cases_json, scenario_factories, scenario_name):
@@ -396,9 +398,10 @@ class Api:
 
             case_data = self._parse_spec_factory_data(
                 case_json.get("factory", {}).get("data", []),
-                f"Case Factory: {case_name}",
+                f"<Case Factory> {scenario_name}: {case_name}",
             )
             cases[case_name] = Case(
+                name=f"{scenario_name}: {case_name}",
                 factory=Factory(
                     sources=self.spec["sources"],
                     inherit_from=[

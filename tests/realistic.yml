@@ -1,0 +1,260 @@
+---
+version: '0.1'
+description: |
+  Realistic - A more realistic example of a test spec that highlights most of the features of dts.
+  Includes multiple, sources, targets, scenarios, factories, and slightly more
+  complex transformations.
+
+  In this example, we have 4 source tables (raw_students, raw_schools,
+  raw_classes, and dim_date), which get combined and aggregated into
+  two target tables (student_classes and students_per_school).
+
+
+
+
+identifiers:
+  - identifier: students
+    attributes:
+      # The id attribute corresponds to a backend auto-generated number.
+      # It has not meaning to business users and would not show up in any reports.
+      - field: id
+        generator: unique_integer
+      # The external_id attribute is like the id printed on a student id card and has some
+      # real world meaning.  It's string-like.
+      - field: external_id
+        generator: unique_string
+
+  - identifier: schools
+    attributes:
+      - field: id
+        generator: unique_integer
+      - field: name
+        generator: unique_string
+        prefix: "school" # Optional argument for unique_string can help troubleshoot testing issues
+
+
+
+sources:
+  - source: raw_students
+    identifier_map:
+      - column: id
+        identifier:
+          name: students
+          attribute: id
+      - column: external_id
+        identifier:
+          name: students
+          attribute: external_id
+
+      # raw_students.school_id is a foreign key to lookup the school record
+      # These identifiers need to be translated as well.
+      - column: school_id
+        identifier:
+          name: schools
+          attribute: id
+
+  - source: raw_schools
+    identifier_map:
+      - column: id
+        identifier:
+          name: schools
+          attribute: id
+      - column: name
+        identifier:
+          name: schools
+          attribute: name
+
+  - source: raw_classes
+    # We don't actually require a separate "classes" identifier.
+    # The identifier doesn't even need to be unique within rows because
+    # identifiers are only used to group records into classes.
+    # This may not be realistic for data generated through standard MVC frameworks, but
+    # is definitely a situation that can happen with some data sources.
+    identifier_map:
+      - column: student_id
+        identifier:
+          name: students
+          attribute: id
+    # source columns can be given defaults.  This can be useful when a source field shouldn't be
+    # blank and needs some sensible default.
+    defaults:
+      - column: start_date
+        value: '2002-06-01'
+
+
+  # For some sources, it doesn't make sense to associate them with identifiers.
+  # This is true when the source data does not change from one case to the next.
+  # A perfect example of this is a list of dates, like this.
+  - source: dim_date
+
+targets:
+  - target: student_classes
+    identifier_map:
+      # The transformation will map the source field "external_id" to the target field "card_id"
+      - column: card_id
+        identifier:
+          name: students
+          attribute: external_id
+      # Additionally, we've said that raw_schools.name is an identifier, which also appears on this target
+      - column: school_name
+        identifier:
+          name: schools
+          attribute: name
+
+  - target: students_per_school
+    identifier_map:
+      - column: school_name
+        identifier:
+          name: schools
+          attribute: name
+
+factories:
+  - factory: SomeStudents
+    description: A few example students.  Yes, I am mixing geek universes.  So what?
+
+    data:
+      - source: raw_students
+        table: |
+          | id   | external_id | school_id | name   |
+          | -    | -           | -         | -      |
+          | stu1 | stu1        | sch1      | Buffy  |
+          | stu2 | stu2        | sch1      | Willow |
+          | stu3 | stu3        | sch2      | Bill   |
+          | stu4 | stu4        | sch2      | Ted    |
+
+      # Every student will always be associated with a school, so we'll include it in the
+      # the same factory
+      - source: raw_schools
+        table: |
+          | id   | name      |
+          | -    | -         |
+          | sch1 | Sunnydale |
+          | sch2 | San Dimas |
+
+  # Build another factory that starts from the one we build, but combines it with some
+  # additional data.
+  - factory: StudentsWithClasses
+    parents:
+      - SomeStudents
+
+    data:
+      - source: raw_classes
+        table: |
+          | student_id | name            | start_date |
+          | -          | -               | -          |
+          | stu1       | Applied Stabby  | 2001-09-08 |
+          | stu2       | Good Spells     | 2002-01-09 |
+          | stu3       | Station         | 2002-09-07 |
+          | stu4       | Being Excellent | 2002-09-07 |
+
+  - factory: DateDimension
+    data:
+      - source: dim_date
+        table: |
+          | date       | season      |
+          | -          | -           |
+          | 2001-09-08 | Fall 2001   |
+          | 2002-01-09 | Spring 2002 |
+          | 2002-06-01 | Summer 2002 |
+          | 2002-09-07 | Fall 2002   |
+
+
+scenarios:
+  - scenario: DenormalizingStudentClasses
+    description: |
+      Shows how we take all our raw data and denormalize it
+      and how we handle some common edge cases.
+
+    # All cases will inherit from this factory
+    factories:
+      - StudentsWithClasses
+      - DateDimension
+
+    cases:
+      - case: BasicDenormalization
+        description: This is what happens when everything works normally
+        expected:
+          data:
+            - target: student_classes
+              table: |
+                | card_id | name   | school_name | class_name      | season      |
+                | -       | -      | -           | -               | -           |
+                | stu1    | Buffy  | Sunnydale   | Applied Stabby  | Fall 2001   |
+                | stu2    | Willow | Sunnydale   | Good Spells     | Spring 2002 |
+                | stu3    | Bill   | San Dimas   | Station         | Fall 2002   |
+                | stu4    | Ted    | San Dimas   | Being Excellent | Fall 2002   |
+              # Order may not always predictable.  Use the by clause to order prior to comparison
+              by:
+                - card_id
+
+
+      - case: MissingClasses
+        description: Students without classes are excluded from denormalized table
+        factory:
+          data:
+            - source: raw_classes
+              table: |
+                | student_id | name            |
+                | -          | -               |
+                | stu1       | Applied Stabby  |
+                | stu2       | Good Spells     |
+
+        expected:
+          data:
+            - target: student_classes
+              table: |
+                | card_id | name   | school_name | class_name      |
+                | -       | -      | -           | -               |
+                | stu1    | Buffy  | Sunnydale   | Applied Stabby  |
+                | stu2    | Willow | Sunnydale   | Good Spells     |
+              by:
+                - card_id
+
+      - case: MultipleClasses
+        description: Students with multiple classes have multiple records
+        factory:
+          data:
+            - source: raw_classes
+              table: |
+                | student_id | name            |
+                | -          | -               |
+                | stu1       | Applied Stabby  |
+                | stu2       | Good Spells     |
+                | stu2       | Season 6 Spells |
+                | stu3       | Station         |
+                | stu4       | Being Excellent |
+                | stu4       | Station         |
+
+        expected:
+          data:
+            - target: student_classes
+              table: |
+                | card_id | name   | school_name | class_name      |
+                | -       | -      | -           | -               |
+                | stu1    | Buffy  | Sunnydale   | Applied Stabby  |
+                | stu2    | Willow | Sunnydale   | Good Spells     |
+                | stu2    | Willow | Sunnydale   | Season 6 Spells |
+                | stu3    | Bill   | San Dimas   | Station         |
+                | stu4    | Ted    | San Dimas   | Being Excellent |
+                | stu4    | Ted    | San Dimas   | Station         |
+              by:
+                - card_id
+                - class_name
+
+  - scenario: StudentAggregation
+    factories:
+      - SomeStudents
+
+    cases:
+      - case: StudentAggregation
+
+        expected:
+          data:
+            - target: students_per_school
+              table: |
+                | school_name | number_of_students |
+                | -           | -                  |
+                | Sunnydale   | 2                  |
+                | San Dimas   | 2                  |
+              by:
+                - school_name

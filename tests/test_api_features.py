@@ -13,173 +13,172 @@ from tests import assert_frame_equal
 # pylint: disable=redefined-outer-name
 
 
-def transformer(
-    students_df, schools_df, classes_df, dim_date_df, exclude_missing_classes=True
+def parse_sources(sources):
+    "Converts test data returned from dts api into Pandas dataframes"
+
+    return {
+        source_name: pd.DataFrame.from_records(data.serialize())
+        for source_name, data in sources.items()
+    }
+
+
+def serialize_actuals(actuals):
+    "Converts Pandas dataframe results into form needed to load dts api actuals"
+
+    return {
+        target_name: json.loads(dataframe.astype(str).to_json(orient="records"))
+        for target_name, dataframe in actuals.items()
+    }
+
+
+def hello_world_transformer(raw_students):
+    salutations_df = raw_students.copy()
+    salutations_df["salutation"] = salutations_df["name"].apply(lambda v: "Hello " + v)
+
+    return {"salutations": salutations_df}
+
+
+def hello_world_multiple_transformer(raw_students):
+    def salutation(row):
+        if row["clique"] == "Scooby Gang":
+            return "Hello {}".format(row["name"])
+        return "Goodbye {}".format(row["name"])
+
+    salutations_df = raw_students.copy()
+    salutations_df["salutation"] = salutations_df.apply(salutation, axis=1)
+
+    return {"salutations": salutations_df}
+
+
+def realistic_transformer(
+    raw_students, raw_schools, raw_classes, dim_date, exclude_missing_classes=True
 ):
     if exclude_missing_classes:
         classes_how = "inner"
     else:
         classes_how = "left"
 
-    student_classes_df = (
-        students_df.rename(columns={"id": "student_id"})
-        .merge(
-            schools_df.rename(columns={"id": "school_id", "name": "school_name"}),
-            how="inner",
-            on="school_id",
-        )
-        .merge(
-            classes_df.rename(columns={"name": "class_name"}),
-            how=classes_how,
-            on="student_id",
-        )
-        .merge(
-            dim_date_df.rename(columns={"date": "start_date"}),
-            how="left",
-            on="start_date",
-        )
+    student_schools = raw_students.rename(
+        columns={"id": "student_id", "external_id": "card_id"}
+    ).merge(
+        raw_schools.rename(columns={"id": "school_id", "name": "school_name"}),
+        how="inner",
+        on="school_id",
     )
 
-    return {"analytics.student_classes": student_classes_df}
+    student_classes = student_schools.merge(
+        raw_classes.rename(columns={"name": "class_name"}),
+        how=classes_how,
+        on="student_id",
+    ).merge(
+        dim_date.rename(columns={"date": "start_date"}), how="left", on="start_date"
+    )
 
+    students_per_school = (
+        student_schools.groupby(["school_name"])
+        .size()
+        .to_frame(name="number_of_students")
+        .reset_index()
+    )
 
-def run_transformer(dts_source_data, exclude_missing_classes=True):
-    pd_data = {
-        "students_df": pd.DataFrame().from_records(dts_source_data["raw.students"]),
-        "schools_df": pd.DataFrame().from_records(dts_source_data["raw.schools"]),
-        "classes_df": pd.DataFrame().from_records(dts_source_data["raw.classes"]),
-        "dim_date_df": pd.DataFrame().from_records(
-            dts_source_data["analytics.dim_date"]
-        ),
+    return {
+        "student_classes": student_classes,
+        "students_per_school": students_per_school,
     }
-    return transformer(**pd_data, exclude_missing_classes=exclude_missing_classes)
 
 
 @pytest.fixture
-def canonical_spec():
-    return yaml.safe_load(open("tests/canonical_spec.yml"))
+def spec():
+    return yaml.safe_load(open("tests/realistic.yml"))
 
 
 @pytest.fixture
-def api(canonical_spec):
-    return dts.api.Api(canonical_spec)
-
-
-@pytest.fixture
-def source_data(api):
+def api(spec):
+    api = dts.api.Api(spec)
     api.generate_sources()
-    return api.source_data()
+    return api
 
 
-def test_source_data_stacks_for_every_case(api, source_data):
-    actual = len(source_data["raw.schools"])
+@pytest.fixture
+def sources_data(api):
+    return parse_sources(api.spec["sources"])
+
+
+@pytest.fixture
+def serialized_actuals(sources_data):
+    actual_data = realistic_transformer(**sources_data)
+    serialized_actuals = serialize_actuals(actual_data)
+    return serialized_actuals
+
+
+@pytest.fixture
+def api_w_actuals(api, serialized_actuals):
+    api.load_actuals(serialized_actuals)
+    return api
+
+
+def test_source_data_stacks_for_every_case(api, sources_data):
+    actual = len(sources_data["raw_schools"])
     n_cases = sum([len(scenario.cases) for scenario in api.spec["scenarios"].values()])
     expected = n_cases * 2
     assert actual == expected
 
 
-def test_stacked_source_data_has_unique_identifiers(source_data):
-    student_ids = [stu["id"] for stu in source_data["raw.students"]]
+def test_stacked_source_data_has_unique_identifiers(sources_data):
+    student_ids = sources_data["raw_students"]["id"]
     expected = len(student_ids)
     actual = len(set(student_ids))
     assert actual == expected
 
 
-def test_source_without_identifer_not_stacked(source_data):
-    actual = len(source_data["analytics.dim_date"])
+def test_source_without_identifer_not_stacked(sources_data):
+    actual = len(sources_data["dim_date"])
     expected = 4
     assert actual == expected
 
 
-# This might be overkill once the full test suite is up
-def test_running_transformer_with_source_data(api, source_data):
-    results = run_transformer(source_data)
-
-    def stu(case_name, named_id):
-        case_id = id(
-            api.spec["scenarios"]["DenormalizingStudentClasses"].cases[case_name]
-        )
-        return api.spec["identifiers"]["students"].generate(
-            case=case_id, named_id=named_id
-        )["external_id"]
-
-    expected = markdown_to_df(
-        f"""
-        | external_id                          | first_name | last_name | school_name | class_name        | season       |
-        | -                                    | -          | -         | -           | -                 | -            |
-        | {stu("BasicDenormalization","stu1")} | Buffy      | Unknown   | Sunnydale   |  Applied Stabby   | Fall 2001    |
-        | {stu("BasicDenormalization","stu2")} | Willow     | Unknown   | Sunnydale   |     Good Spells   | Spring 2002  |
-        | {stu("BasicDenormalization","stu3")} | Bill       | Unknown   | San Dimas   |         Station   | Fall 2002    |
-        | {stu("BasicDenormalization","stu4")} | Ted        | Unknown   | San Dimas   | Being Excellent   | Fall 2002    |
-        | {stu("MissingClasses","stu1")}       | Buffy      | Unknown   | Sunnydale   |  Applied Stabby   | Summer 2002  |
-        | {stu("MissingClasses","stu2")}       | Willow     | Unknown   | Sunnydale   |     Good Spells   | Summer 2002  |
-        | {stu("MultipleClasses","stu1")}      | Buffy      | Unknown   | Sunnydale   |  Applied Stabby   | Summer 2002  |
-        | {stu("MultipleClasses","stu2")}      | Willow     | Unknown   | Sunnydale   |     Good Spells   | Summer 2002  |
-        | {stu("MultipleClasses","stu2")}      | Willow     | Unknown   | Sunnydale   | Season 6 Spells   | Summer 2002  |
-        | {stu("MultipleClasses","stu3")}      | Bill       | Unknown   | San Dimas   |         Station   | Summer 2002  |
-        | {stu("MultipleClasses","stu4")}      | Ted        | Unknown   | San Dimas   | Being Excellent   | Summer 2002  |
-        | {stu("MultipleClasses","stu4")}      | Ted        | Unknown   | San Dimas   |         Station   | Summer 2002  |
-        """
-    )
-
-    actual = results["analytics.student_classes"][expected.columns]
-    assert_frame_equal(actual, expected)
-
-
-def test_actuals_are_loaded(api, source_data):
-    results = run_transformer(source_data)
-    api.load_actuals(
-        {
-            target: json.loads(df.to_json(orient="records"))
-            for target, df in results.items()
-        }
-    )
+def test_actuals_are_loaded(api_w_actuals):
+    api = api_w_actuals
 
     expected = markdown_to_df(
         """
-        | external_id | first_name | last_name | school_name | class_name        | season       |
-        | -           | -          | -         | -           | -                 | -            |
-        | stu1        | Buffy      | Unknown   | Sunnydale   |  Applied Stabby   | Fall 2001    |
-        | stu2        | Willow     | Unknown   | Sunnydale   |     Good Spells   | Spring 2002  |
-        | stu3        | Bill       | Unknown   | San Dimas   |         Station   | Fall 2002    |
-        | stu4        | Ted        | Unknown   | San Dimas   | Being Excellent   | Fall 2002    |
-        | stu1        | Buffy      | Unknown   | Sunnydale   |  Applied Stabby   | Summer 2002  |
-        | stu2        | Willow     | Unknown   | Sunnydale   |     Good Spells   | Summer 2002  |
-        | stu1        | Buffy      | Unknown   | Sunnydale   |  Applied Stabby   | Summer 2002  |
-        | stu2        | Willow     | Unknown   | Sunnydale   |     Good Spells   | Summer 2002  |
-        | stu2        | Willow     | Unknown   | Sunnydale   | Season 6 Spells   | Summer 2002  |
-        | stu3        | Bill       | Unknown   | San Dimas   |         Station   | Summer 2002  |
-        | stu4        | Ted        | Unknown   | San Dimas   | Being Excellent   | Summer 2002  |
-        | stu4        | Ted        | Unknown   | San Dimas   |         Station   | Summer 2002  |
+        | card_id | name   | school_name | class_name        | season       |
+        | -       | -      | -           | -                 | -            |
+        | stu1    | Buffy  | Sunnydale   |  Applied Stabby   | Fall 2001    |
+        | stu2    | Willow | Sunnydale   |     Good Spells   | Spring 2002  |
+        | stu3    | Bill   | San Dimas   |         Station   | Fall 2002    |
+        | stu4    | Ted    | San Dimas   | Being Excellent   | Fall 2002    |
+        | stu1    | Buffy  | Sunnydale   |  Applied Stabby   | Summer 2002  |
+        | stu2    | Willow | Sunnydale   |     Good Spells   | Summer 2002  |
+        | stu1    | Buffy  | Sunnydale   |  Applied Stabby   | Summer 2002  |
+        | stu2    | Willow | Sunnydale   |     Good Spells   | Summer 2002  |
+        | stu2    | Willow | Sunnydale   | Season 6 Spells   | Summer 2002  |
+        | stu3    | Bill   | San Dimas   |         Station   | Summer 2002  |
+        | stu4    | Ted    | San Dimas   | Being Excellent   | Summer 2002  |
+        | stu4    | Ted    | San Dimas   |         Station   | Summer 2002  |
         """
     )
 
-    actual = api.spec["targets"]["analytics.student_classes"].data[expected.columns]
+    actual = api.spec["targets"]["student_classes"].data[expected.columns]
     assert_frame_equal(actual, expected)
 
 
-def test_passing_expectation(api, source_data):
-    results = run_transformer(source_data)
-    api.load_actuals(
-        {
-            target: json.loads(df.to_json(orient="records"))
-            for target, df in results.items()
-        }
-    )
+def test_passing_expectation(api_w_actuals):
+    api = api_w_actuals
 
     api.spec["scenarios"]["DenormalizingStudentClasses"].cases[
         "MissingClasses"
     ].assert_expectations()
 
 
-def test_failing_expectation(api, source_data):
-    results = run_transformer(source_data, exclude_missing_classes=False)
-    api.load_actuals(
-        {
-            target: json.loads(df.to_json(orient="records"))
-            for target, df in results.items()
-        }
-    )
+def test_all_passing_exceptions(api_w_actuals):
+    api_w_actuals.assert_expectations()
+
+
+def test_failing_expectation(api, sources_data):
+    actual_data = realistic_transformer(**sources_data, exclude_missing_classes=False)
+    serialized_actuals = serialize_actuals(actual_data)
+    api.load_actuals(serialized_actuals)
 
     with pytest.raises(AssertionError):
         api.spec["scenarios"]["DenormalizingStudentClasses"].cases[
@@ -187,26 +186,27 @@ def test_failing_expectation(api, source_data):
         ].assert_expectations()
 
 
-def test_running_all_assertions(api, source_data):
-    results = run_transformer(source_data)
-    api.load_actuals(
-        {
-            target: json.loads(df.to_json(orient="records"))
-            for target, df in results.items()
-        }
-    )
+def test_hello_world_spec():
+    spec = yaml.safe_load(open("tests/hello_world.yml"))
+    api = dts.api.Api(spec)
+    api.generate_sources()
 
-    api.run_assertions()
+    sources_data = parse_sources(api.spec["sources"])
+    actual_data = hello_world_transformer(**sources_data)
+    serialized_actuals = serialize_actuals(actual_data)
+    api.load_actuals(serialized_actuals)
+
+    api.assert_expectations()
 
 
-def test_running_all_assertions_with_failure(api, source_data):
-    results = run_transformer(source_data, exclude_missing_classes=False)
-    api.load_actuals(
-        {
-            target: json.loads(df.to_json(orient="records"))
-            for target, df in results.items()
-        }
-    )
+def test_hello_world_multiple_cases_spec():
+    spec = yaml.safe_load(open("tests/hello_world_multiple_cases.yml"))
+    api = dts.api.Api(spec)
+    api.generate_sources()
 
-    with pytest.raises(AssertionError):
-        api.run_assertions()
+    sources_data = parse_sources(api.spec["sources"])
+    actual_data = hello_world_multiple_transformer(**sources_data)
+    serialized_actuals = serialize_actuals(actual_data)
+    api.load_actuals(serialized_actuals)
+
+    api.assert_expectations()

@@ -11,37 +11,33 @@ import dts.api
 
 
 @pytest.fixture
-def canonical_spec():
-    return yaml.safe_load(open("tests/canonical_spec.yml"))
+def spec():
+    return yaml.safe_load(open("tests/realistic.yml"))
 
 
 @pytest.fixture
-def api(canonical_spec):
-    return dts.api.Api(canonical_spec)
+def api(spec):
+    return dts.api.Api(spec)
 
 
-def test_canonical_spec_is_valid(canonical_spec):
-    jsonschema.validate(canonical_spec, dts.api.SCHEMA)
+def test_spec_is_valid(spec):
+    jsonschema.validate(spec, dts.api.SCHEMA)
 
 
 def test_identifiers_are_defined(api):
-    expected = {
-        "students": dts.api.Identifier,
-        "schools": dts.api.Identifier,
-        "classes": dts.api.Identifier,
-    }
+    expected = {"students": dts.api.Identifier, "schools": dts.api.Identifier}
     actual = {k: v.__class__ for k, v in api.spec["identifiers"].items()}
     assert actual == expected
 
 
 def test_identifiers_have_attributes(api):
-    expected = {"id", "uuid", "external_id"}
+    expected = {"id", "external_id"}
     actual = set(api.spec["identifiers"]["students"].attributes.keys())
     assert actual == expected
 
 
-def test_identifiers_cannot_be_duplicated(canonical_spec):
-    error_spec = copy.deepcopy(canonical_spec)
+def test_identifiers_cannot_be_duplicated(spec):
+    error_spec = copy.deepcopy(spec)
     error_spec["identifiers"].append(
         {
             "identifier": "students",
@@ -54,29 +50,29 @@ def test_identifiers_cannot_be_duplicated(canonical_spec):
 
 def test_sources_are_defined(api):
     expected = {
-        "raw.students": dts.api.Source,
-        "raw.schools": dts.api.Source,
-        "raw.classes": dts.api.Source,
-        "analytics.dim_date": dts.api.Source,
+        "raw_students": dts.api.Source,
+        "raw_schools": dts.api.Source,
+        "raw_classes": dts.api.Source,
+        "dim_date": dts.api.Source,
     }
     actual = {k: v.__class__ for k, v in api.spec["sources"].items()}
     assert actual == expected
 
 
 def test_sources_can_have_defaults(api):
-    expected = {"first_name": "Bob"}
-    actual = api.spec["sources"]["raw.students"].defaults
+    expected = {"start_date": "2002-06-01"}
+    actual = api.spec["sources"]["raw_classes"].defaults
     assert actual == expected
 
 
 def test_sources_can_have_identifier_map(api):
     expected = api.spec["identifiers"]["students"]
-    actual = api.spec["sources"]["raw.students"].id_mapping["id"]["identifier"]
+    actual = api.spec["sources"]["raw_students"].id_mapping["id"]["identifier"]
     assert actual == expected
 
 
-def test_source_identifiers_must_exist(canonical_spec):
-    error_spec = copy.deepcopy(canonical_spec)
+def test_source_identifiers_must_exist(spec):
+    error_spec = copy.deepcopy(spec)
     error_spec["sources"].append(
         {
             "source": "not.students",
@@ -93,21 +89,22 @@ def test_source_identifiers_must_exist(canonical_spec):
 
 
 def test_targets_are_defined(api):
-    expected = {"analytics.student_classes": dts.api.Target}
+    expected = {
+        "student_classes": dts.api.Target,
+        "students_per_school": dts.api.Target,
+    }
     actual = {k: v.__class__ for k, v in api.spec["targets"].items()}
     assert actual == expected
 
 
 def test_targets_can_have_identifier_map(api):
     expected = api.spec["identifiers"]["students"]
-    actual = api.spec["targets"]["analytics.student_classes"].id_mapping["external_id"][
-        "identifier"
-    ]
+    actual = api.spec["targets"]["student_classes"].id_mapping["card_id"]["identifier"]
     assert actual == expected
 
 
-def test_target_identifiers_must_exist(canonical_spec):
-    error_spec = copy.deepcopy(canonical_spec)
+def test_target_identifiers_must_exist(spec):
+    error_spec = copy.deepcopy(spec)
     error_spec["targets"].append(
         {
             "target": "not.students",
@@ -128,8 +125,8 @@ def test_target_identifiers_must_exist(canonical_spec):
 
 def test_factories_are_defined(api):
     expected = {
-        "CanonicalStudent": dts.api.Factory,
-        "StudentWithClasses": dts.api.Factory,
+        "SomeStudents": dts.api.Factory,
+        "StudentsWithClasses": dts.api.Factory,
         "DateDimension": dts.api.Factory,
     }
     actual = {k: v.__class__ for k, v in api.spec["factories"].items()}
@@ -137,25 +134,25 @@ def test_factories_are_defined(api):
 
 
 def test_factories_can_have_data_sources(api):
-    expected = {"raw.students", "raw.schools"}
-    actual = api.spec["factories"]["CanonicalStudent"].data.keys()
+    expected = {"raw_students", "raw_schools"}
+    actual = api.spec["factories"]["SomeStudents"].data.keys()
     assert actual == expected
 
 
 def test_factories_inherit_from_parents(api):
-    expected = {"raw.students", "raw.schools", "raw.classes"}
-    actual = api.spec["factories"]["StudentWithClasses"].data.keys()
+    expected = {"raw_students", "raw_schools", "raw_classes"}
+    actual = api.spec["factories"]["StudentsWithClasses"].data.keys()
     assert actual == expected
 
 
-def test_factories_cannot_be_duplicated(canonical_spec):
-    error_spec = copy.deepcopy(canonical_spec)
+def test_factories_cannot_be_duplicated(spec):
+    error_spec = copy.deepcopy(spec)
     error_spec["factories"].append(
         {
-            "factory": "CanonicalStudent",
+            "factory": "SomeStudents",
             "data": [
                 {
-                    "source": "raw.students",
+                    "source": "raw_students",
                     "table": """
                     | student_id |
                     | -          |
@@ -169,8 +166,8 @@ def test_factories_cannot_be_duplicated(canonical_spec):
         dts.api.Api(error_spec)
 
 
-def test_factories_must_reference_known_sources(canonical_spec):
-    error_spec = copy.deepcopy(canonical_spec)
+def test_factories_must_reference_known_sources(spec):
+    error_spec = copy.deepcopy(spec)
     error_spec["factories"].append(
         {
             "factory": "NoSource",
@@ -190,15 +187,15 @@ def test_factories_must_reference_known_sources(canonical_spec):
         dts.api.Api(error_spec)
 
 
-def test_factory_parents_must_exist(canonical_spec):
-    error_spec = copy.deepcopy(canonical_spec)
+def test_factory_parents_must_exist(spec):
+    error_spec = copy.deepcopy(spec)
     error_spec["factories"].append(
         {
             "factory": "AnotherOne",
             "parents": ["NotAFactory"],
             "data": [
                 {
-                    "source": "raw.students",
+                    "source": "raw_students",
                     "table": """
                     | student_id |
                     | -          |
@@ -213,13 +210,16 @@ def test_factory_parents_must_exist(canonical_spec):
 
 
 def test_scenarios_are_defined(api):
-    expected = {"DenormalizingStudentClasses": dts.api.Scenario}
+    expected = {
+        "DenormalizingStudentClasses": dts.api.Scenario,
+        "StudentAggregation": dts.api.Scenario,
+    }
     actual = {k: v.__class__ for k, v in api.spec["scenarios"].items()}
     assert actual == expected
 
 
-def test_scenarios_cannot_be_duplicated(canonical_spec):
-    error_spec = copy.deepcopy(canonical_spec)
+def test_scenarios_cannot_be_duplicated(spec):
+    error_spec = copy.deepcopy(spec)
     error_spec["scenarios"].append(copy.deepcopy(error_spec["scenarios"][0]))
     error_spec["scenarios"][-1][
         "description"
@@ -241,8 +241,8 @@ def test_scenarios_have_cases(api):
     assert actual == expected
 
 
-def test_scenario_cases_cannot_be_duplicated(canonical_spec):
-    error_spec = copy.deepcopy(canonical_spec)
+def test_scenario_cases_cannot_be_duplicated(spec):
+    error_spec = copy.deepcopy(spec)
     error_spec["scenarios"][0]["cases"].append(
         copy.deepcopy(error_spec["scenarios"][0]["cases"][0])
     )
@@ -258,7 +258,7 @@ def test_cases_inherit_from_scenario_factories(api):
         "BasicDenormalization"
     ]
 
-    expected = {"raw.students", "raw.schools", "raw.classes", "analytics.dim_date"}
+    expected = {"raw_students", "raw_schools", "raw_classes", "dim_date"}
     actual = case.factory.data.keys()
     assert actual == expected
 
@@ -281,7 +281,7 @@ def test_cases_can_customize_factories(api):
             ]
         ]
     )
-    actual = case.factory.data["raw.classes"]["table"]
+    actual = case.factory.data["raw_classes"]["table"]
     assert actual == expected
 
 
