@@ -94,8 +94,9 @@ scenarios:
   - scenario: Hello World
     description: The simplest scenario
     # All cases in this scenario will use this factory (which may be modified on case-by-case basis)
-    factories:
-      - SomeStudents
+    factory:
+        parents:
+          - SomeStudents
 
     cases:
       - case: HelloGang
@@ -241,8 +242,9 @@ into two to demonstrate how multiple cases work.  Here's how the YAML would look
 scenarios:
   - scenario: Hello World With Multiple Cases
     description: The simplest scenario
-    factories:
-      - SomeStudents
+    factory:
+      parents:
+        - SomeStudents
 
     cases:
       - case: HelloGang

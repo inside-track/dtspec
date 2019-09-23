@@ -166,9 +166,10 @@ scenarios:
       and how we handle some common edge cases.
 
     # All cases will inherit from this factory
-    factories:
-      - StudentsWithClasses
-      - DateDimension
+    factory:
+      parents:
+        - StudentsWithClasses
+        - DateDimension
 
     cases:
       - case: BasicDenormalization
@@ -242,8 +243,9 @@ scenarios:
                 - class_name
 
   - scenario: StudentAggregation
-    factories:
-      - SomeStudents
+    factory:
+      parents:
+        - SomeStudents
 
     cases:
       - case: StudentAggregation
