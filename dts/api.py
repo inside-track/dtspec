@@ -169,11 +169,9 @@ SCHEMA = {
                 "properties": {
                     "scenario": {"type": "string"},
                     "description": {"type": "string"},
-                    "factories": {
-                        "type": "array",
-                        "minItems": 1,
-                        "uniqueItems": True,
-                        "items": {"type": "string"},
+                    "factory": {
+                        "parents": {"type": "array", "items": {"type": "string"}},
+                        "data": {"$ref": "#/definitions/factory_data"},
                     },
                     "cases": {
                         "type": "array",
@@ -335,14 +333,9 @@ class Api:
             if factory_name in self.spec["factories"].keys():
                 raise ApiDuplicateError(f"Duplicate factories detected: {factory_name}")
 
-            inherit_from = []
-            for parent_factory in factory_json.get("parents", []):
-                if parent_factory not in self.spec["factories"].keys():
-                    raise ApiReferentialError(
-                        f'Unable to find parent factory "{parent_factory}" referenced in factory "{factory_name}"'
-                    )
-
-                inherit_from.append(self.spec["factories"][parent_factory])
+            inherit_from = self._parse_spec_factory_parents(
+                factory_json.get('parents', []), factory_name
+            )
 
             self.spec["factories"][factory_name] = Factory(
                 data=factory_data,
@@ -350,7 +343,22 @@ class Api:
                 sources=self.spec["sources"],
             )
 
+    def _parse_spec_factory_parents(self, parent_names, factory_name):
+        inherit_from = []
+        for parent_factory in parent_names:
+            if parent_factory not in self.spec["factories"].keys():
+                raise ApiReferentialError(
+                    f'Unable to find parent factory "{parent_factory}" referenced in factory "{factory_name}"'
+                )
+
+            inherit_from.append(self.spec["factories"][parent_factory])
+        return inherit_from
+
+
     def _parse_spec_factory_data(self, json_spec, factory_name):
+        if not json_spec:
+            return None
+
         spec = {}
         for data_json in json_spec:
             source_name = data_json["source"]
@@ -378,16 +386,30 @@ class Api:
                     f"Duplicate scenarios detected: {scenario_name}"
                 )
 
+            factory_json = scenario_json.get('factory')
+            scenario_factory = None
+            if factory_json:
+                factory_name = f'Factory for Scenario {scenario_name}'
+                scenario_factory = Factory(
+                    inherit_from=self._parse_spec_factory_parents(
+                        factory_json.get('parents', []), factory_name
+                    ),
+                    data=self._parse_spec_factory_data(
+                        factory_json.get("data", []), factory_name
+                    ),
+                    sources=self.spec['sources']
+                )
+
             self.spec["scenarios"][scenario_name] = Scenario(
                 name=scenario_name,
                 cases=self._parse_spec_cases(
                     scenario_json["cases"],
-                    scenario_json.get("factories", []),
                     scenario_name,
+                    scenario_factory
                 ),
             )
 
-    def _parse_spec_cases(self, cases_json, scenario_factories, scenario_name):
+    def _parse_spec_cases(self, cases_json, scenario_name, scenario_factory):
         cases = {}
         for case_json in cases_json:
             case_name = case_json["case"]
@@ -404,9 +426,7 @@ class Api:
                 name=f"{scenario_name}: {case_name}",
                 factory=Factory(
                     sources=self.spec["sources"],
-                    inherit_from=[
-                        self.spec["factories"][name] for name in scenario_factories
-                    ],
+                    inherit_from=[scenario_factory],
                     data=case_data,
                 ),
                 expectations=self._parse_spec_expectations(case_json["expected"]),

@@ -47,8 +47,9 @@ factories:
 scenarios:
   - scenario: Hello World With Multiple Cases
     description: The simplest scenario
-    factories:
-      - SomeStudents
+    factory:
+      parents:
+        - SomeStudents
 
     cases:
       - case: HelloGang
