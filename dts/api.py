@@ -334,7 +334,7 @@ class Api:
                 raise ApiDuplicateError(f"Duplicate factories detected: {factory_name}")
 
             inherit_from = self._parse_spec_factory_parents(
-                factory_json.get('parents', []), factory_name
+                factory_json.get("parents", []), factory_name
             )
 
             self.spec["factories"][factory_name] = Factory(
@@ -353,7 +353,6 @@ class Api:
 
             inherit_from.append(self.spec["factories"][parent_factory])
         return inherit_from
-
 
     def _parse_spec_factory_data(self, json_spec, factory_name):
         if not json_spec:
@@ -386,26 +385,24 @@ class Api:
                     f"Duplicate scenarios detected: {scenario_name}"
                 )
 
-            factory_json = scenario_json.get('factory')
+            factory_json = scenario_json.get("factory")
             scenario_factory = None
             if factory_json:
-                factory_name = f'Factory for Scenario {scenario_name}'
+                factory_name = f"Factory for Scenario {scenario_name}"
                 scenario_factory = Factory(
                     inherit_from=self._parse_spec_factory_parents(
-                        factory_json.get('parents', []), factory_name
+                        factory_json.get("parents", []), factory_name
                     ),
                     data=self._parse_spec_factory_data(
                         factory_json.get("data", []), factory_name
                     ),
-                    sources=self.spec['sources']
+                    sources=self.spec["sources"],
                 )
 
             self.spec["scenarios"][scenario_name] = Scenario(
                 name=scenario_name,
                 cases=self._parse_spec_cases(
-                    scenario_json["cases"],
-                    scenario_name,
-                    scenario_factory
+                    scenario_json["cases"], scenario_name, scenario_factory
                 ),
             )
 
