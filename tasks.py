@@ -24,3 +24,20 @@ def lint_pylint(ctx):
 def lint(ctx, check=False):
     lint_black(ctx, check=check)
     lint_pylint(ctx)
+
+
+@task
+def package(ctx):
+    """
+    Package distribution to upload to PyPI
+    """
+    ctx.run("rm -rf dist")
+    ctx.run("python setup.py sdist")
+
+
+@task
+def package_deploy(ctx):
+    """
+    Deploy package to PyPI
+    """
+    ctx.run("twine upload dist/*")
