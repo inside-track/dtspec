@@ -125,6 +125,7 @@ SCHEMA = {
                     "source": {"type": "string"},
                     "defaults": {"$ref": "#/definitions/column_values"},
                     "identifier_map": {"$ref": "#/definitions/identifier_map"},
+                    "description": {"type": "string"},
                 },
             },
         },
@@ -139,6 +140,7 @@ SCHEMA = {
                 "properties": {
                     "target": {"type": "string"},
                     "identifier_map": {"$ref": "#/definitions/identifier_map"},
+                    "description": {"type": "string"},
                 },
             },
         },
@@ -295,7 +297,10 @@ class Api:
             )
 
             self.spec["sources"][source_name] = Source(
-                defaults=defaults, id_mapping=id_mapping
+                defaults=defaults,
+                id_mapping=id_mapping,
+                name=source_name,
+                description=source_json.get("description", ""),
             )
 
     def _parse_identifier_map(self, map_json, data_type=None, data_name=None):
@@ -320,7 +325,11 @@ class Api:
                 target_json.get("identifier_map", []), "target", target_name
             )
 
-            self.spec["targets"][target_name] = Target(id_mapping=id_mapping)
+            self.spec["targets"][target_name] = Target(
+                id_mapping=id_mapping,
+                name=target_name,
+                description=target_json.get("description", ""),
+            )
 
     def _parse_spec_factories(self, json_spec):
         self.spec["factories"] = {}
@@ -341,6 +350,8 @@ class Api:
                 data=factory_data,
                 inherit_from=inherit_from,
                 sources=self.spec["sources"],
+                name=factory_name,
+                description=factory_json.get("description", ""),
             )
 
     def _parse_spec_factory_parents(self, parent_names, factory_name):
@@ -404,6 +415,7 @@ class Api:
                 cases=self._parse_spec_cases(
                     scenario_json["cases"], scenario_name, scenario_factory
                 ),
+                description=scenario_json.get("description", ""),
             )
 
     def _parse_spec_cases(self, cases_json, scenario_name, scenario_factory):
@@ -427,6 +439,7 @@ class Api:
                     data=case_data,
                 ),
                 expectations=self._parse_spec_expectations(case_json["expected"]),
+                description=case_json.get("description", ""),
             )
         return cases
 

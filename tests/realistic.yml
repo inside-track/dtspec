@@ -36,6 +36,7 @@ identifiers:
 
 sources:
   - source: raw_students
+    description: This is the main source for student data
     identifier_map:
       - column: id
         identifier:
@@ -89,6 +90,7 @@ sources:
 
 targets:
   - target: student_classes
+    description: Denormalized table with one record per student per class
     identifier_map:
       # The transformation will map the source field "external_id" to the target field "card_id"
       - column: card_id
@@ -243,6 +245,7 @@ scenarios:
                 - class_name
 
   - scenario: StudentAggregation
+    description: Counts students per school
     factory:
       parents:
         - SomeStudents
