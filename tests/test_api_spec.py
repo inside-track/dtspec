@@ -292,3 +292,71 @@ def test_cases_have_data_expectations(api):
     expected = [dts.api.DataExpectation]
     actual = [v.__class__ for v in case.expectations]
     assert actual == expected
+
+
+def test_sources_have_descriptions(api):
+    actual = api.spec["sources"]["raw_students"].description
+    expected = "This is the main source for student data"
+    assert actual == expected
+
+
+def test_sources_have_names(api):
+    actual = api.spec["sources"]["raw_students"].name
+    expected = "raw_students"
+    assert actual == expected
+
+
+def test_targets_have_descriptions(api):
+    actual = api.spec["targets"]["student_classes"].description
+    expected = "Denormalized table with one record per student per class"
+    assert actual == expected
+
+
+def test_targets_have_names(api):
+    actual = api.spec["targets"]["student_classes"].name
+    expected = "student_classes"
+    assert actual == expected
+
+
+def test_factories_have_descriptions(api):
+    actual = api.spec["factories"]["SomeStudents"].description
+    expected = "A few example students.  Yes, I am mixing geek universes.  So what?"
+    assert actual == expected
+
+
+def test_factories_have_names(api):
+    actual = api.spec["factories"]["SomeStudents"].name
+    expected = "SomeStudents"
+    assert actual == expected
+
+
+def test_scenarios_have_descriptions(api):
+    actual = api.spec["scenarios"]["StudentAggregation"].description
+    expected = "Counts students per school"
+    assert actual == expected
+
+
+def test_scenarios_have_names(api):
+    actual = api.spec["scenarios"]["StudentAggregation"].name
+    expected = "StudentAggregation"
+    assert actual == expected
+
+
+def test_cases_have_descriptions(api):
+    actual = (
+        api.spec["scenarios"]["DenormalizingStudentClasses"]
+        .cases["BasicDenormalization"]
+        .description
+    )
+    expected = "This is what happens when everything works normally"
+    assert actual == expected
+
+
+def test_cases_have_names(api):
+    actual = (
+        api.spec["scenarios"]["DenormalizingStudentClasses"]
+        .cases["BasicDenormalization"]
+        .name
+    )
+    expected = "DenormalizingStudentClasses: BasicDenormalization"
+    assert actual == expected

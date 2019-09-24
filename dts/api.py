@@ -157,7 +157,6 @@ SCHEMA = {
                     "description": {"type": "string"},
                     "parents": {"type": "array", "items": {"type": "string"}},
                     "data": {"$ref": "#/definitions/factory_data"},
-                    "description": {"type": "string"},
                 },
             },
         },
@@ -300,6 +299,7 @@ class Api:
             self.spec["sources"][source_name] = Source(
                 defaults=defaults,
                 id_mapping=id_mapping,
+                name=source_name,
                 description=source_json.get("description", ""),
             )
 
@@ -326,7 +326,9 @@ class Api:
             )
 
             self.spec["targets"][target_name] = Target(
-                id_mapping=id_mapping, description=target_json.get("description", "")
+                id_mapping=id_mapping,
+                name=target_name,
+                description=target_json.get("description", ""),
             )
 
     def _parse_spec_factories(self, json_spec):
@@ -348,6 +350,7 @@ class Api:
                 data=factory_data,
                 inherit_from=inherit_from,
                 sources=self.spec["sources"],
+                name=factory_name,
                 description=factory_json.get("description", ""),
             )
 

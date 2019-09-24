@@ -186,40 +186,6 @@ def test_failing_expectation(api, sources_data):
         ].assert_expectations()
 
 
-def test_sources_have_descriptions(api):
-    actual = api.spec["sources"]["raw_students"].description
-    expected = "This is the main source for student data"
-    assert actual == expected
-
-
-def test_targets_have_descriptions(api):
-    actual = api.spec["targets"]["student_classes"].description
-    expected = "Denormalized table with one record per student per class"
-    assert actual == expected
-
-
-def test_factories_have_descriptions(api):
-    actual = api.spec["factories"]["SomeStudents"].description
-    expected = "A few example students.  Yes, I am mixing geek universes.  So what?"
-    assert actual == expected
-
-
-def test_scenarios_have_descriptions(api):
-    actual = api.spec["scenarios"]["StudentAggregation"].description
-    expected = "Counts students per school"
-    assert actual == expected
-
-
-def test_cases_have_descriptions(api):
-    actual = (
-        api.spec["scenarios"]["DenormalizingStudentClasses"]
-        .cases["BasicDenormalization"]
-        .description
-    )
-    expected = "This is what happens when everything works normally"
-    assert actual == expected
-
-
 def test_hello_world_spec():
     spec = yaml.safe_load(open("tests/hello_world.yml"))
     api = dts.api.Api(spec)
