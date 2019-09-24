@@ -1,6 +1,6 @@
 import pandas.util.testing
 
-from dts.core import markdown_to_df
+from dtspec.core import markdown_to_df
 
 
 def assert_frame_equal(actual, expected, **kwargs):

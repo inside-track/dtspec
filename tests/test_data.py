@@ -1,7 +1,7 @@
 import pandas as pd
 from pandas.util.testing import assert_frame_equal
 
-from dts.core import markdown_to_df
+from dtspec.core import markdown_to_df
 
 # pylint: disable=redefined-outer-name
 

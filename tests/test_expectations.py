@@ -1,7 +1,7 @@
 import pytest
 
-from dts.core import markdown_to_df
-from dts.expectations import DataExpectation
+from dtspec.core import markdown_to_df
+from dtspec.expectations import DataExpectation
 
 # pylint: disable=redefined-outer-name
 

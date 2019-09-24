@@ -1,7 +1,7 @@
 import pytest
 
-import dts.core
-from dts.core import markdown_to_df, Identifier, Source, Case
+import dtspec.core
+from dtspec.core import markdown_to_df, Identifier, Source, Case
 
 from tests import assert_frame_equal
 
@@ -356,7 +356,7 @@ def test_multiple_identifers_are_translated(source_w_multiple_ids, identifiers, 
 
 
 def test_all_identifying_columns_must_be_present(source_w_multiple_ids, cases):
-    with pytest.raises(dts.core.IdentifierWithoutColumnError) as excinfo:
+    with pytest.raises(dtspec.core.IdentifierWithoutColumnError) as excinfo:
         source_w_multiple_ids.stack(
             cases[0],
             markdown_to_df(
@@ -420,7 +420,7 @@ def test_source_without_identifer_raises_if_data_changes(cases):
         ),
     )
 
-    with pytest.raises(dts.core.CannotStackStaticSourceError) as excinfo:
+    with pytest.raises(dtspec.core.CannotStackStaticSourceError) as excinfo:
         source.stack(
             cases[0],
             markdown_to_df(

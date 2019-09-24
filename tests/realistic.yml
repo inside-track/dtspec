@@ -1,7 +1,7 @@
 ---
 version: '0.1'
 description: |
-  Realistic - A more realistic example of a test spec that highlights most of the features of dts.
+  Realistic - A more realistic example of a test spec that highlights most of the features of dtspec.
   Includes multiple, sources, targets, scenarios, factories, and slightly more
   complex transformations.
 

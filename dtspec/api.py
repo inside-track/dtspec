@@ -1,8 +1,8 @@
 import jsonschema
 from colorama import Fore, Style
 
-from dts.core import Identifier, Factory, Source, Target, Scenario, Case
-from dts.expectations import DataExpectation
+from dtspec.core import Identifier, Factory, Source, Target, Scenario, Case
+from dtspec.expectations import DataExpectation
 
 SCHEMA = {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -276,7 +276,7 @@ class Api:
                     print(Style.RESET_ALL)
                     has_error = True
         if has_error:
-            raise AssertionError("There were dts assertion errors, please see log")
+            raise AssertionError("There were dtspec assertion errors, please see log")
 
     def _parse_spec_identifiers(self, json_spec):
         self.spec["identifiers"] = {}

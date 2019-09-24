@@ -6,8 +6,8 @@ from colorama import Fore, Style
 
 import pytest
 
-import dts.api
-from dts.core import markdown_to_df
+import dtspec.api
+from dtspec.core import markdown_to_df
 
 from tests import assert_frame_equal
 
@@ -15,7 +15,7 @@ from tests import assert_frame_equal
 
 
 def parse_sources(sources):
-    "Converts test data returned from dts api into Pandas dataframes"
+    "Converts test data returned from dtspec api into Pandas dataframes"
 
     return {
         source_name: pd.DataFrame.from_records(data.serialize())
@@ -24,7 +24,7 @@ def parse_sources(sources):
 
 
 def serialize_actuals(actuals):
-    "Converts Pandas dataframe results into form needed to load dts api actuals"
+    "Converts Pandas dataframe results into form needed to load dtspec api actuals"
 
     return {
         target_name: json.loads(dataframe.astype(str).to_json(orient="records"))
@@ -95,7 +95,7 @@ def spec():
 
 @pytest.fixture
 def api(spec):
-    api = dts.api.Api(spec)
+    api = dtspec.api.Api(spec)
     api.generate_sources()
     return api
 
@@ -189,7 +189,7 @@ def test_failing_expectation(api, sources_data):
 
 def test_hello_world_spec():
     spec = yaml.safe_load(open("tests/hello_world.yml"))
-    api = dts.api.Api(spec)
+    api = dtspec.api.Api(spec)
     api.generate_sources()
 
     sources_data = parse_sources(api.spec["sources"])
@@ -202,7 +202,7 @@ def test_hello_world_spec():
 
 def test_hello_world_multiple_cases_spec():
     spec = yaml.safe_load(open("tests/hello_world_multiple_cases.yml"))
-    api = dts.api.Api(spec)
+    api = dtspec.api.Api(spec)
     api.generate_sources()
 
     sources_data = parse_sources(api.spec["sources"])

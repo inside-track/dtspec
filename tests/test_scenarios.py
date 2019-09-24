@@ -1,7 +1,15 @@
 import pytest
 
-from dts.core import markdown_to_df, Identifier, Factory, Source, Target, Scenario, Case
-from dts.expectations import DataExpectation
+from dtspec.core import (
+    markdown_to_df,
+    Identifier,
+    Factory,
+    Source,
+    Target,
+    Scenario,
+    Case,
+)
+from dtspec.expectations import DataExpectation
 
 from tests import assert_frame_equal
 

@@ -5,7 +5,9 @@ import jsonschema
 
 import pytest
 
-import dts.api
+import dtspec.api
+from dtspec.core import Identifier, Source, Target, Factory, Scenario, Case
+from dtspec.expectations import DataExpectation
 
 # pylint: disable=redefined-outer-name
 
@@ -17,15 +19,15 @@ def spec():
 
 @pytest.fixture
 def api(spec):
-    return dts.api.Api(spec)
+    return dtspec.api.Api(spec)
 
 
 def test_spec_is_valid(spec):
-    jsonschema.validate(spec, dts.api.SCHEMA)
+    jsonschema.validate(spec, dtspec.api.SCHEMA)
 
 
 def test_identifiers_are_defined(api):
-    expected = {"students": dts.api.Identifier, "schools": dts.api.Identifier}
+    expected = {"students": Identifier, "schools": Identifier}
     actual = {k: v.__class__ for k, v in api.spec["identifiers"].items()}
     assert actual == expected
 
@@ -44,16 +46,16 @@ def test_identifiers_cannot_be_duplicated(spec):
             "attributes": [{"field": "id", "generator": "unique_integer"}],
         }
     )
-    with pytest.raises(dts.api.ApiDuplicateError):
-        dts.api.Api(error_spec)
+    with pytest.raises(dtspec.api.ApiDuplicateError):
+        dtspec.api.Api(error_spec)
 
 
 def test_sources_are_defined(api):
     expected = {
-        "raw_students": dts.api.Source,
-        "raw_schools": dts.api.Source,
-        "raw_classes": dts.api.Source,
-        "dim_date": dts.api.Source,
+        "raw_students": Source,
+        "raw_schools": Source,
+        "raw_classes": Source,
+        "dim_date": Source,
     }
     actual = {k: v.__class__ for k, v in api.spec["sources"].items()}
     assert actual == expected
@@ -84,15 +86,12 @@ def test_source_identifiers_must_exist(spec):
             ],
         }
     )
-    with pytest.raises(dts.api.ApiReferentialError):
-        dts.api.Api(error_spec)
+    with pytest.raises(dtspec.api.ApiReferentialError):
+        dtspec.api.Api(error_spec)
 
 
 def test_targets_are_defined(api):
-    expected = {
-        "student_classes": dts.api.Target,
-        "students_per_school": dts.api.Target,
-    }
+    expected = {"student_classes": Target, "students_per_school": Target}
     actual = {k: v.__class__ for k, v in api.spec["targets"].items()}
     assert actual == expected
 
@@ -119,15 +118,15 @@ def test_target_identifiers_must_exist(spec):
             ],
         }
     )
-    with pytest.raises(dts.api.ApiReferentialError):
-        dts.api.Api(error_spec)
+    with pytest.raises(dtspec.api.ApiReferentialError):
+        dtspec.api.Api(error_spec)
 
 
 def test_factories_are_defined(api):
     expected = {
-        "SomeStudents": dts.api.Factory,
-        "StudentsWithClasses": dts.api.Factory,
-        "DateDimension": dts.api.Factory,
+        "SomeStudents": Factory,
+        "StudentsWithClasses": Factory,
+        "DateDimension": Factory,
     }
     actual = {k: v.__class__ for k, v in api.spec["factories"].items()}
     assert actual == expected
@@ -162,8 +161,8 @@ def test_factories_cannot_be_duplicated(spec):
             ],
         }
     )
-    with pytest.raises(dts.api.ApiDuplicateError):
-        dts.api.Api(error_spec)
+    with pytest.raises(dtspec.api.ApiDuplicateError):
+        dtspec.api.Api(error_spec)
 
 
 def test_factories_must_reference_known_sources(spec):
@@ -183,8 +182,8 @@ def test_factories_must_reference_known_sources(spec):
             ],
         }
     )
-    with pytest.raises(dts.api.ApiReferentialError):
-        dts.api.Api(error_spec)
+    with pytest.raises(dtspec.api.ApiReferentialError):
+        dtspec.api.Api(error_spec)
 
 
 def test_factory_parents_must_exist(spec):
@@ -205,15 +204,12 @@ def test_factory_parents_must_exist(spec):
             ],
         }
     )
-    with pytest.raises(dts.api.ApiReferentialError):
-        dts.api.Api(error_spec)
+    with pytest.raises(dtspec.api.ApiReferentialError):
+        dtspec.api.Api(error_spec)
 
 
 def test_scenarios_are_defined(api):
-    expected = {
-        "DenormalizingStudentClasses": dts.api.Scenario,
-        "StudentAggregation": dts.api.Scenario,
-    }
+    expected = {"DenormalizingStudentClasses": Scenario, "StudentAggregation": Scenario}
     actual = {k: v.__class__ for k, v in api.spec["scenarios"].items()}
     assert actual == expected
 
@@ -224,15 +220,15 @@ def test_scenarios_cannot_be_duplicated(spec):
     error_spec["scenarios"][-1][
         "description"
     ] = "Otherwise jsonschema complains of pure dupe"
-    with pytest.raises(dts.api.ApiDuplicateError):
-        dts.api.Api(error_spec)
+    with pytest.raises(dtspec.api.ApiDuplicateError):
+        dtspec.api.Api(error_spec)
 
 
 def test_scenarios_have_cases(api):
     expected = {
-        "BasicDenormalization": dts.api.Case,
-        "MissingClasses": dts.api.Case,
-        "MultipleClasses": dts.api.Case,
+        "BasicDenormalization": Case,
+        "MissingClasses": Case,
+        "MultipleClasses": Case,
     }
     actual = {
         k: v.__class__
@@ -249,8 +245,8 @@ def test_scenario_cases_cannot_be_duplicated(spec):
     error_spec["scenarios"][0]["cases"][-1][
         "description"
     ] = "Otherwise jsonschema complains of pure dupe"
-    with pytest.raises(dts.api.ApiDuplicateError):
-        dts.api.Api(error_spec)
+    with pytest.raises(dtspec.api.ApiDuplicateError):
+        dtspec.api.Api(error_spec)
 
 
 def test_cases_inherit_from_scenario_factories(api):
@@ -289,7 +285,7 @@ def test_cases_have_data_expectations(api):
     case = api.spec["scenarios"]["DenormalizingStudentClasses"].cases[
         "BasicDenormalization"
     ]
-    expected = [dts.api.DataExpectation]
+    expected = [DataExpectation]
     actual = [v.__class__ for v in case.expectations]
     assert actual == expected
 

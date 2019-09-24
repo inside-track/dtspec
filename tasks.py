@@ -10,13 +10,13 @@ def test(ctx):
 def lint_black(ctx, check=False):
 
     ctx.run(f"black {'--check' if check else ''} tasks.py")
-    ctx.run(f"black {'--check' if check else ''} dts")
+    ctx.run(f"black {'--check' if check else ''} dtspec")
     ctx.run(f"black {'--check' if check else ''} tests")
 
 
 @task
 def lint_pylint(ctx):
-    ctx.run("pylint dts")
+    ctx.run("pylint dtspec")
     ctx.run("pylint tests")
 
 
