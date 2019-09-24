@@ -1,4 +1,5 @@
 import jsonschema
+from colorama import Fore, Style
 
 from dts.core import Identifier, Factory, Source, Target, Scenario, Case
 from dts.expectations import DataExpectation
@@ -229,6 +230,8 @@ class Api:
         "Converts the raw JSON spec into internal objects used to generate source data and run assertions"
         jsonschema.validate(json_spec, SCHEMA)
 
+        self.spec["version"] = json_spec["version"]
+        self.spec["description"] = json_spec.get("description", "")
         self._parse_spec_identifiers(json_spec)
         self._parse_spec_sources(json_spec)
         self._parse_spec_targets(json_spec)
@@ -259,9 +262,21 @@ class Api:
 
     def assert_expectations(self):
         "Runs all of the assertions defined in the spec against the actual data"
-        for _scenario_name, scenario in self.spec["scenarios"].items():
-            for _case_name, case in scenario.cases.items():
-                case.assert_expectations()
+        has_error = False
+
+        for _, scenario in self.spec["scenarios"].items():
+            for _, case in scenario.cases.items():
+                print(f"Asserting {case.name}", end=" ")
+                try:
+                    case.assert_expectations()
+                    print(Fore.GREEN + "PASSED" + Style.RESET_ALL)
+                except AssertionError as err:
+                    print(Fore.RED + "FAILED")
+                    print(err)
+                    print(Style.RESET_ALL)
+                    has_error = True
+        if has_error:
+            raise AssertionError("There were dts assertion errors, please see log")
 
     def _parse_spec_identifiers(self, json_spec):
         self.spec["identifiers"] = {}

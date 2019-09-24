@@ -2,6 +2,7 @@ import json
 
 import yaml
 import pandas as pd
+from colorama import Fore, Style
 
 import pytest
 
@@ -210,3 +211,23 @@ def test_hello_world_multiple_cases_spec():
     api.load_actuals(serialized_actuals)
 
     api.assert_expectations()
+
+
+def test_assertion_messages(api, sources_data, capsys):
+    actual_data = realistic_transformer(**sources_data, exclude_missing_classes=False)
+    serialized_actuals = serialize_actuals(actual_data)
+    api.load_actuals(serialized_actuals)
+
+    with pytest.raises(AssertionError):
+        api.assert_expectations()
+
+    captured = capsys.readouterr()
+
+    assert (
+        f"Asserting DenormalizingStudentClasses: BasicDenormalization {Fore.GREEN}PASSED{Style.RESET_ALL}"
+        in captured.out
+    )
+    assert (
+        f"Asserting DenormalizingStudentClasses: MissingClasses {Fore.RED}FAILED"
+        in captured.out
+    )

@@ -10,6 +10,7 @@ atomicwrites==1.3.0       # via pytest
 attrs==19.1.0             # via black, jsonschema, packaging, pytest
 black==19.3b0
 click==7.0                # via black
+colorama==0.4.1
 importlib-metadata==0.19  # via pluggy, pytest
 invoke==1.3.0
 isort==4.3.21             # via pylint
