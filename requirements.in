@@ -1,7 +1,10 @@
-pyyaml
-pytest
 pandas
 jsonschema
+colorama
+
+# development only
+pytest
+pyyaml
 invoke
 pylint
 black
