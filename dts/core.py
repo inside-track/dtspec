@@ -164,9 +164,10 @@ class CannotStackStaticSourceError(Exception):
 
 
 class Source:
-    def __init__(self, defaults=None, id_mapping=None):
+    def __init__(self, defaults=None, id_mapping=None, description=None):
         self.defaults = defaults
         self.id_mapping = id_mapping
+        self.description = description
         self.data = pd.DataFrame()
 
     def stack(self, case, data, values=None):
@@ -226,8 +227,9 @@ class Source:
 
 
 class Target:
-    def __init__(self, id_mapping=None):
+    def __init__(self, id_mapping=None, description=None):
         self.id_mapping = id_mapping or {}
+        self.description = description
         self.data = pd.DataFrame()
 
     def load_actual(self, records):
@@ -266,10 +268,11 @@ class Target:
 
 
 class Factory:
-    def __init__(self, data=None, sources=None, inherit_from=None):
+    def __init__(self, data=None, sources=None, inherit_from=None, description=None):
         self.data = data or {}
         self._parse_tables()
         self._compose_data(inherit_from)
+        self.description = description
         self.sources = sources
 
     def generate(self, case):
@@ -317,8 +320,9 @@ class DuplicateCaseError(Exception):
 
 
 class Scenario:  # pylint: disable=too-few-public-methods
-    def __init__(self, name=None, cases=None):
+    def __init__(self, name=None, cases=None, description=None):
         self.name = name or f"None - {id(self)}"
+        self.description = description
         self.cases = cases or {}
 
     def generate(self):
@@ -327,10 +331,11 @@ class Scenario:  # pylint: disable=too-few-public-methods
 
 
 class Case:  # pylint: disable=too-few-public-methods
-    def __init__(self, name=None, factory=None, expectations=None):
+    def __init__(self, name=None, factory=None, expectations=None, description=None):
         self.name = name or f"None - {id(self)}"
         self.factory = factory
         self.expectations = expectations or []
+        self.description = description
 
     def assert_expectations(self):
         for expectation in self.expectations:
