@@ -1,6 +1,6 @@
 ---
 version: '0.1'
-description: HelloWorld - Simplest example of running dts
+description: HelloWorld - Simplest example of running dtspec
 
 # The names of sources and targets is arbitrary, but it's up to the user to determine
 # how they get mapped to/from their data transformation system.

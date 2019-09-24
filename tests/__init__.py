@@ -1,1 +1,1 @@
-from dts.expectations import assert_frame_equal
+from dtspec.expectations import assert_frame_equal

@@ -1,8 +1,8 @@
 import copy
 import pytest
 
-import dts.core
-from dts.core import markdown_to_df, Identifier, Target, Case
+import dtspec.core
+from dtspec.core import markdown_to_df, Identifier, Target, Case
 
 from tests import assert_frame_equal
 
@@ -53,7 +53,7 @@ def simple_data(stu):
 def test_actual_data_is_loaded_ids_translated(simple_target, simple_data):
     simple_target.load_actual(simple_data)
 
-    actual = simple_target.data.drop(columns="__dts_case__")
+    actual = simple_target.data.drop(columns="__dtspec_case__")
     expected = markdown_to_df(
         """
         | id   | first_name |
@@ -87,5 +87,5 @@ def test_target_can_be_split_into_case(simple_target, simple_data, cases):
 def test_raises_error_if_raw_id_not_found(simple_target, simple_data):
     bad_data = copy.deepcopy(simple_data)
     bad_data[1]["id"] = 123456789
-    with pytest.raises(dts.core.UnableToFindNamedIdError):
+    with pytest.raises(dtspec.core.UnableToFindNamedIdError):
         simple_target.load_actual(bad_data)

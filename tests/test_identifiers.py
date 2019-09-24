@@ -1,7 +1,7 @@
 import re
 import pytest
 
-from dts.core import Identifier
+from dtspec.core import Identifier
 
 # pylint: disable=redefined-outer-name
 

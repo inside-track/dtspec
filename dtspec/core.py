@@ -251,7 +251,7 @@ class Target:
                 raw_id: mapto["identifier"].find(mapto["attribute"], raw_id)
                 for raw_id in self.data[column]
             }
-            self.data["__dts_case__"] = self.data[column].apply(
+            self.data["__dtspec_case__"] = self.data[column].apply(
                 lambda v, lkp=lkp: lkp[v].case
             )
             self.data[column] = self.data[column].apply(
@@ -259,12 +259,12 @@ class Target:
             )
 
     def case_data(self, case):
-        if "__dts_case__" not in self.data.columns:
+        if "__dtspec_case__" not in self.data.columns:
             return self.data
 
         return (
-            self.data[self.data["__dts_case__"].apply(id) == id(case)]
-            .drop(columns="__dts_case__")
+            self.data[self.data["__dtspec_case__"].apply(id) == id(case)]
+            .drop(columns="__dtspec_case__")
             .reset_index(drop=True)
         )
 

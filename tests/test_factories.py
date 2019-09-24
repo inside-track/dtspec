@@ -1,7 +1,7 @@
 from copy import deepcopy
 import pytest
 
-from dts.core import markdown_to_df, Identifier, Factory, Source
+from dtspec.core import markdown_to_df, Identifier, Factory, Source
 
 from tests import assert_frame_equal
 

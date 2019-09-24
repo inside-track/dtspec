@@ -84,8 +84,8 @@ scenarios:
 
         expected:
           data:
-            # Again, the ids here are not the actual ids sent to dts after performing
-            # the transformations.  They are just named references and dts
+            # Again, the ids here are not the actual ids sent to dtspec after performing
+            # the transformations.  They are just named references and dtspec
             # keeps track of the relationship between the actual ids and the named ones.
             - target: salutations
               table: |

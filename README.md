@@ -1,27 +1,27 @@
-# Data Test Studio
+# Data Test Spec
 
-dts is an API for testing data transformations.
+dtspec is an API for testing data transformations.
 
 ## Introduction
 
 Testing data transformations is hard.  So hard that a lot of ETL/ELT
 processes have little or (more often) no automated tests.
-dts aims to make it easier to write and run tests for very complicated
+dtspec aims to make it easier to write and run tests for very complicated
 data transformations typically encountered in ETL/ELT.
 
-With dts, we imagine a data transformation process that takes a set of
-data **sources** and transforms them into a set of data **targets**.  dts
+With dtspec, we imagine a data transformation process that takes a set of
+data **sources** and transforms them into a set of data **targets**.  dtspec
 is primarily concerned with structured data sources, like Pandas
-dataframes or database tables.  A user of dts defines data **factories** that
+dataframes or database tables.  A user of dtspec defines data **factories** that
 generate source data, and a set of **expectations** that describe how the data
 should look after it's been transformed.
 
-While dts is written in Python, it is intended to be used as more of a
-language-agnostic API.  A dts user writes a test **spec**, which is then passed
-to dts.  dts processes that spec and then returns to the user test data for
+While dtspec is written in Python, it is intended to be used as more of a
+language-agnostic API.  A dtspec user writes a test **spec**, which is then passed
+to dtspec.  dtspec processes that spec and then returns to the user test data for
 all of the source specific in the spec.  The user then feeds that test data into
-their data transformation system, collects the output, and sends it back to dts.
-dts compares the actual results of the data transformations with the expected
+their data transformation system, collects the output, and sends it back to dtspec.
+dtspec compares the actual results of the data transformations with the expected
 results specific in the spec and reports on any discrepancies.
 
 
@@ -47,15 +47,15 @@ def hello_world_transformer(raw_students):
 
 ````
 
-dts is an API that accepts a JSON blob for the test spec.  However, I strongly
+dtspec is an API that accepts a JSON blob for the test spec.  However, I strongly
 prefer to write specs in YAML and then convert them into JSON before passing them
-on to dts.  To begin writing our test spec, we define the dts `version`, a `description`
+on to dtspec.  To begin writing our test spec, we define the dtspec `version`, a `description`
 of the test spec, and then list out the `sources` and `targets`:
 
 ````yaml
 ---
 version: '0.1'
-description: HelloWorld - Simplest example of running dts
+description: HelloWorld - Simplest example of running dtspec
 
 # The names of sources and targets is arbitrary, but it's up to the user to determine
 # how they get mapped to/from their data transformation system.
@@ -116,27 +116,27 @@ scenarios:
 That's it. See also the [full YAML spec](tests/hello_world.yml).
 
 Now that we've described the full test spec, we need to use it.  The first step is to
-parse the YAML file, send it to the dts api, and have dts generate source data:
+parse the YAML file, send it to the dtspec api, and have dtspec generate source data:
 
 ````python
-import dts
+import dtspec
 import yaml
 
 spec = yaml.safe_load(open("tests/hello_world.yml"))
-api = dts.api.Api(spec)
+api = dtspec.api.Api(spec)
 api.generate_sources()
 ````
 
 The specific steps taken at this point are going to be sensitive to the data transformation
 environment being used, but we'll stick with our Pandas transformations for the sake of this
 tutorial.  Given this, we can define a simple function that converts the source data returned
-from dts into Pandas dataframes:
+from dtspec into Pandas dataframes:
 
 ````python
 import pandas as pd
 
 def parse_sources(sources):
-    "Converts test data returned from dts api into Pandas dataframes"
+    "Converts test data returned from dtspec api into Pandas dataframes"
 
     return {
         source_name: pd.DataFrame.from_records(data.serialize())
@@ -152,12 +152,12 @@ actual_data = hello_world_transformer(**sources_data)
 ````
 
 Next, we need to convert the output dataframes of the transformations, `actual_data`,
-back into a format that can be loaded into dts for comparison.  For Pandas,
+back into a format that can be loaded into dtspec for comparison.  For Pandas,
 this function is:
 
 ````python
 def serialize_actuals(actuals):
-    "Converts Pandas dataframe results into form needed to load dts api actuals"
+    "Converts Pandas dataframe results into form needed to load dtspec api actuals"
 
     return {
         target_name: json.loads(dataframe.astype(str).to_json(orient="records"))
@@ -165,14 +165,14 @@ def serialize_actuals(actuals):
     }
 ````
 
-It is loaded into dts using:
+It is loaded into dtspec using:
 
 ````python
 serialized_actuals = serialize_actuals(actual_data)
 api.load_actuals(serialized_actuals)
 ````
 
-Finally, dts can be called to run all of the expectations:
+Finally, dtspec can be called to run all of the expectations:
 
 ````python
 api.assert_expectations()
@@ -181,7 +181,7 @@ api.assert_expectations()
 Putting all of this together:
 ````python
 spec = yaml.safe_load(open("tests/hello_world.yml"))
-api = dts.api.Api(spec)
+api = dtspec.api.Api(spec)
 api.generate_sources()
 
 sources_data = parse_sources(api.spec["sources"])
@@ -191,7 +191,7 @@ api.load_actuals(serialized_actuals)
 ````
 
 Try running the above code and changing either the YAML spec or the `hello_world_transformer`
-function and see how dts responds.
+function and see how dtspec responds.
 
 ### Hello World With Multiple Test Cases
 
@@ -207,7 +207,7 @@ loading data into our system, running a test, clearing out the data,
 loading some more, running the next test, and so on as is often
 done when testing ORM-based applications like Rails or Django.
 
-dts seeks to minimize the number of requests on the data
+dtspec seeks to minimize the number of requests on the data
 transformation system in order to deal with these latency issues.
 It does this by "stacking" the test data generated in each case
 and delivering back to the user all of this stacked data.  The user
@@ -215,7 +215,7 @@ then loads this stacked data into their data transformation system
 **once**, runs the data transformations **once**, and then collects
 the resulting output **once**.
 
-Let's see how dts handles this in action.
+Let's see how dtspec handles this in action.
 
 First, let's change our hello world data transformation a bit.  Instead of
 just saying hello to our heroes, let's say goodbye to any villians (as
@@ -279,8 +279,8 @@ scenarios:
 
         expected:
           data:
-            # Again, the ids here are not the actual ids sent to dts after performing
-            # the transformations.  They are just named references and dts
+            # Again, the ids here are not the actual ids sent to dtspec after performing
+            # the transformations.  They are just named references and dtspec
             # keeps track of the relationship between the actual ids and the named ones.
             - target: salutations
               table: |
@@ -293,12 +293,12 @@ scenarios:
 
 This won't quite work as is, because we're missing something.  We have
 two cases that describe variations on the source data `raw_students`
-and the output `salutations`.  dts collects the source data
+and the output `salutations`.  dtspec collects the source data
 definitions from each case and stacks them into a single data source.
 The user then run the transformations on that source and generates a
-single target to provide back to dts.  But dts has to know which record
+single target to provide back to dtspec.  But dtspec has to know which record
 belongs to which case.  To do this, we have to define an
-**identifier** that tells dts which columns should be used to identify
+**identifier** that tells dtspec which columns should be used to identify
 a record as belonging to a case.  A good identifier is often a primary
 key that uniquely defines a record, but it is not strictly required to
 be unique across all records.
@@ -314,7 +314,7 @@ identifiers:
         generator: unique_integer
 ````
 
-We tell dts that this identifier is associated with the `id` columns of both
+We tell dtspec that this identifier is associated with the `id` columns of both
 the source and the target via:
 
 ````yaml
@@ -340,17 +340,17 @@ With the sources and targets with identifiers, the values we see in
 the source factories and target expectations are not the values that
 are actually used in the data.  Instead, they are simply **named
 refereces**.  For example, in the "HelloGang" case, `id=1` belongs to
-Buffy and `id=2` belongs to Willow.  But when dts generates the source
+Buffy and `id=2` belongs to Willow.  But when dtspec generates the source
 data, the actual values may be 3 and 9, or 4 and 7, or something else.
 Unique values are not generated in any deterministic manner -- each
-run of dts can give a diferent set.  dts only guarantees that the
+run of dtspec can give a diferent set.  dtspec only guarantees that the
 each named reference will be a unique integer (via the `generator`
 defined in the `identifier` section).
 
 Futhermore, in the second case called "GoodbyeVillians", we see that
-`id=1` belongs to Drusilla and `id=2` belongs to Harmony.  dts will
+`id=1` belongs to Drusilla and `id=2` belongs to Harmony.  dtspec will
 generate unique values for this case as well, and they **will not**
-conflict with the values generated for the first case.  So dts will pass
+conflict with the values generated for the first case.  So dtspec will pass
 back to the user 4 total records (Buffy, Willow, Drusilla, Harmony) with 4
 different ids
 
@@ -359,7 +359,7 @@ run the assertions in the same fashion as the the earlier example
 
 ````python
 spec = yaml.safe_load(open("tests/hello_world_multiple_cases.yml"))
-api = dts.api.Api(spec)
+api = dtspec.api.Api(spec)
 api.generate_sources()
 
 sources_data = parse_sources(api.spec["sources"])
@@ -419,7 +419,7 @@ the data assertions using a familiar pattern:
 
 ````python
 spec = yaml.safe_load(open("tests/realistic.yml"))
-api = dts.api.Api(spec)
+api = dtspec.api.Api(spec)
 api.generate_sources()
 
 sources_data = parse_sources(api.spec["sources"])
@@ -432,7 +432,7 @@ api.assert_expectations()
 
 
 
-## Additional notes about dts
+## Additional notes about dtspec
 
 * At the moment, all source data values are generated as strings.  It
   is up to the the user to enforce data types suitable to their data
@@ -448,8 +448,8 @@ We welcome contributors!  Please submit any suggests or pull requests in Github.
 Create an appropriate python environment.  I like [miniconda](https://conda.io/miniconda.html),
 but use whatever you like:
 
-    conda create --name dts python=3.6
-    source activate dts
+    conda create --name dtspec python=3.6
+    source activate dtspec
 
 Then install pip packages
 
