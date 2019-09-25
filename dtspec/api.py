@@ -258,6 +258,7 @@ class Api:
         """
 
         for target, records in actuals_json.items():
+            print(f'Loading actuals for target {target}')
             self.spec["targets"][target].load_actual(records)
 
     def assert_expectations(self):
