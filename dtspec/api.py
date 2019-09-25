@@ -77,6 +77,7 @@ SCHEMA = {
                             "target": {"type": "string"},
                             "table": {"type": "string"},
                             "by": {"type": "array", "items": {"type": "string"}},
+                            "compare_via": {"type": "string"},
                         },
                     },
                 }
@@ -258,7 +259,7 @@ class Api:
         """
 
         for target, records in actuals_json.items():
-            print(f'Loading actuals for target {target}')
+            print(f"Loading actuals for target {target}")
             self.spec["targets"][target].load_actual(records)
 
     def assert_expectations(self):
@@ -474,6 +475,7 @@ class Api:
                     target=target,
                     table=expected_data["table"],
                     by=expected_data.get("by", []),
+                    compare_via=expected_data.get("compare_via", None),
                 )
             )
         return expectations
