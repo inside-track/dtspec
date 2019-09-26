@@ -13,23 +13,83 @@ def assert_frame_equal(actual, expected, **kwargs):
         raise AssertionError(msg)
 
 
+class MissingExpectedKeysAssertionError(Exception):
+    pass
+
+
 class DataExpectation:
-    def __init__(self, target, table, by=None):
+    def __init__(self, target, table, by=None, compare_via=None):
+        """
+        Compares actual results with a table of expected data.
+
+        Args:
+            target (str): Name of data target
+            table (str): Markdown representation of expected data
+            by (array): List of fields to do sorted or key-based comparison.
+            compare_via (str): Choose either "exact", "sorted", or "keys".
+                * If "exact", then target data must exactly match expected format
+                  for all of the fields listed (e.g., sort order matters).
+                  This is the default if there is no *by* option specified.
+                * If "sorted", then expected and actuals are sorted by the *by* keys
+                  prior to comparison.  This is the default if *by* keys are specified.
+                * If "keys", then any actual data that does not have values specified
+                  by the *by* keys are ignored (think: compared by expected left join actual).
+        """
+
         self.target = target
         self.expected_data = markdown_to_df(table)
         self.actual_data = None
         self.by = by or []
 
+        if len(self.by) > 0:
+            self.compare_via = compare_via or "sorted"
+        else:
+            self.compare_via = compare_via or "exact"
+
+        if len(self.by) == 0 and self.compare_via != "exact":
+            raise ValueError(
+                f'Cannot use compare_via={self.compare_via} without a "by" option'
+            )
+
     def load_actual(self, actual_data):
         self.actual_data = actual_data
 
     def assert_expected(self):
-        if self.by:
-            expected = self.expected_data.sort_values(self.by).reset_index(drop=True)
-            actual = self.actual_data.sort_values(self.by).reset_index(drop=True)
-        else:
+        if self.compare_via == "exact":
             expected = self.expected_data.reset_index(drop=True)
             actual = self.actual_data.reset_index(drop=True)
+        elif self.compare_via == "sorted":
+            expected = self.expected_data.sort_values(self.by).reset_index(drop=True)
+            actual = self.actual_data.sort_values(self.by).reset_index(drop=True)
+        elif self.compare_via == "keys":
+            expected = self.expected_data.sort_values(self.by).reset_index(drop=True)
+
+            merged = self.actual_data.merge(
+                expected[self.by],
+                how="outer",
+                on=self.by,
+                indicator="__dtspec_indicator__",
+            ).sort_values(self.by)
+
+            actual = (
+                merged.query('__dtspec_indicator__ == "both"')
+                .drop(columns="__dtspec_indicator__")
+                .reset_index(drop=True)
+            )
+
+            missing_expected_keys = merged.query(
+                '__dtspec_indicator__ == "right_only"'
+            ).copy()[self.by]
+            missing_actual_keys = merged.query(
+                '__dtspec_indicator__ == "left_only"'
+            ).copy()[self.by]
+            if len(missing_expected_keys) > 0:
+                raise MissingExpectedKeysAssertionError(
+                    f"Keys in expected data, not found in actual data:\n{missing_expected_keys}\n"
+                    + f"Keys in actual data, not in expected:\n{missing_actual_keys}"
+                )
+        else:
+            raise ValueError(f"Unknown compare_via option: {self.compare_via}")
 
         comparison_columns = expected.columns
         missing_expected_columns = set(comparison_columns) - set(actual.columns)
