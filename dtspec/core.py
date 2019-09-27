@@ -132,7 +132,7 @@ class Identifier:
 
         return self.cached_ids[case_id].named_ids[named_id]
 
-    def find(self, attribute, raw_id):
+    def find(self, attribute, raw_id, target_name='Unknown'):
         "Given an attribute and a raw id, return named attribute and case"
         found = SimpleNamespace(named_id=None, case=None)
         for case_name, case in self.cached_ids.items():
@@ -143,7 +143,7 @@ class Identifier:
                     return found
 
         raise UnableToFindNamedIdError(
-            f'Unable to find named identifier for attribute "{attribute}" and value "{raw_id}"'
+            f'In target "{target_name}", unable to find named identifier for attribute "{attribute}" and value "{raw_id}"'
         )
 
 
@@ -183,7 +183,7 @@ class Source:
         else:
             if len(self.data) > 0 and not _frame_is_equal(self.data, w_defaults_df):
                 raise CannotStackStaticSourceError(
-                    f'In case "{case.name}", attempting to stack data onto source without identifiers:\n {data}'
+                    f'In case "{case.name}", attempting to stack data onto source "{self.name}" without identifiers:\n {data}'
                 )
             self.data = w_defaults_df
 
@@ -212,7 +212,7 @@ class Source:
         missing_columns = set(self.id_mapping.keys()) - set(df.columns)
         if len(missing_columns) > 0:
             raise IdentifierWithoutColumnError(
-                f'In case "{case.name}", data source is missing columns corresponding to identifier attributes: {missing_columns}'
+                f'In case "{case.name}", data source "{self.name}" is missing columns corresponding to identifier attributes: {missing_columns}'
             )
 
         for column, mapto in self.id_mapping.items():
@@ -242,13 +242,13 @@ class Target:
         for column, mapto in self.id_mapping.items():
             if column not in self.data:
                 raise KeyError(
-                    f'Target defines identifier map for column "{column}", '
+                    f'Target "{self.name}" defines identifier map for column "{column}", '
                     f'but "{column}" not found in actual data.  '
                     f"columns found: {self.data.columns}"
                 )
 
             lkp = {
-                raw_id: mapto["identifier"].find(mapto["attribute"], raw_id)
+                raw_id: mapto["identifier"].find(mapto["attribute"], raw_id, target_name=self.name)
                 for raw_id in self.data[column]
             }
             self.data["__dtspec_case__"] = self.data[column].apply(
