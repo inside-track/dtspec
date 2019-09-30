@@ -84,6 +84,11 @@ def test_generators_fail_when_passed_bad_args():
         )
 
 
+def test_null_named_ids_result_in_nulls(student):
+    null_value = student.generate(case="TestCase", named_id=None)["id"]
+    assert null_value is None
+
+
 def test_find_the_named_id(student):
     expected = {
         student.generate(case="TestCase", named_id=name)["external_id"]: name

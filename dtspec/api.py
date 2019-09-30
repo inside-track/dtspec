@@ -56,7 +56,7 @@ SCHEMA = {
                 "additionalProperties": False,
                 "properties": {
                     "column": {"type": "string"},
-                    "value": {"type": "string"},
+                    "value": {"type": ["string", "null"]},
                 },
             },
         },

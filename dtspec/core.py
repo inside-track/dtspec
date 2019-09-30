@@ -128,11 +128,15 @@ class Identifier:
         if named_id not in self.cached_ids[case_id].named_ids:
             self.cached_ids[case_id].named_ids[named_id] = {}
             for attr, generator in self.generators.items():
-                self.cached_ids[case_id].named_ids[named_id][attr] = generator()
+                if named_id:
+                    value = generator()
+                else:
+                    value = None
+                self.cached_ids[case_id].named_ids[named_id][attr] = value
 
         return self.cached_ids[case_id].named_ids[named_id]
 
-    def find(self, attribute, raw_id, target_name='Unknown'):
+    def find(self, attribute, raw_id, target_name="Unknown"):
         "Given an attribute and a raw id, return named attribute and case"
         found = SimpleNamespace(named_id=None, case=None)
         for case_name, case in self.cached_ids.items():
@@ -174,7 +178,7 @@ class Source:
     def stack(self, case, data, values=None):
         "values override defaults at stack time"
 
-        w_defaults_df = self._add_defaults(data, case, values)
+        w_defaults_df = self._add_defaults(data, values)
         if self.id_mapping:
             translated_df = self._translate_identifiers(w_defaults_df, case)
             self.data = pd.concat([self.data, translated_df], sort=False).reset_index(
@@ -187,24 +191,21 @@ class Source:
                 )
             self.data = w_defaults_df
 
-    def _add_defaults(self, df, case, values):
+    def _add_defaults(self, df, values):
         default_values = {**(self.defaults or {}), **(values or {})}
-        if len(default_values) == 0:
-            return df
+
+        if self.id_mapping:
+            identifier_default_columns = set(self.id_mapping.keys()) - (
+                set(default_values.keys()) | set(df.columns)
+            )
+
+            for column in identifier_default_columns:
+                df[column] = [str(uuid.uuid4()) for _ in range(len(df))]
 
         for column, value in default_values.items():
             if column in df.columns:
                 continue
-
-            if isinstance(value, dict) and "identifier" in value:
-                df[column] = None
-                df[column] = df[column].apply(
-                    lambda _, value=value: value["identifier"].generate(
-                        case=case, named_id=uuid.uuid4()
-                    )[value["attribute"]]
-                )
-            else:
-                df[column] = value
+            df[column] = value
 
         return df
 
@@ -248,7 +249,9 @@ class Target:
                 )
 
             lkp = {
-                raw_id: mapto["identifier"].find(mapto["attribute"], raw_id, target_name=self.name)
+                raw_id: mapto["identifier"].find(
+                    mapto["attribute"], raw_id, target_name=self.name
+                )
                 for raw_id in self.data[column]
             }
             self.data["__dtspec_case__"] = self.data[column].apply(

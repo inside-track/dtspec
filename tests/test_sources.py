@@ -198,49 +198,92 @@ def test_overriding_defaults(identifiers, cases):
     assert_frame_equal(actual, expected)
 
 
-def test_identifier_defaults(identifiers, cases):
+def test_identifiers_generate_defaults(identifiers, cases):
+    """
+    If a column is marked as an identifier column, but is not given
+    a specific named id, then "anonymous" named ids will be generated
+    when the data is stacked.
+    """
+
     source = Source(
-        defaults={
-            "organization_id": {
-                "identifier": identifiers["organization"],
-                "attribute": "id",
-            }
-        },
-        id_mapping={"id": {"identifier": identifiers["student"], "attribute": "id"}},
+        id_mapping={"id": {"identifier": identifiers["student"], "attribute": "id"}}
     )
 
     source.stack(
         cases[0],
         markdown_to_df(
             """
-        | id | first_name |
-        | -  | -          |
-        | s1 | Bob        |
-        | s2 | Nancy      |
-        """
+            | first_name |
+            | -          |
+            | Bob        |
+            | Nancy      |
+            """
         ),
     )
 
     anonymous_ids = [
         v["id"]
-        for v in identifiers["organization"].cached_ids[id(cases[0])].named_ids.values()
+        for v in identifiers["student"].cached_ids[id(cases[0])].named_ids.values()
     ]
 
     actual = source.data
     expected = markdown_to_df(
         """
-        | id   | first_name | organization_id |
-        | -    | -          | -               |
-        | {s1} | Bob        | {o1}            |
-        | {s2} | Nancy      | {o2}            |
+        | first_name | id   |
+        | -          | -    |
+        | Bob        | {s1} |
+        | Nancy      | {s2} |
         """.format(
-            s1=identifiers["student"].generate(case=cases[0], named_id="s1")["id"],
-            s2=identifiers["student"].generate(case=cases[0], named_id="s2")["id"],
-            o1=anonymous_ids[0],
-            o2=anonymous_ids[1],
+            s1=anonymous_ids[0], s2=anonymous_ids[1]
         )
     )
     assert_frame_equal(actual, expected)
+
+
+def test_defaults_override_identifiers(identifiers, cases):
+    """
+    If a column is marked as an identifier, but is given a default, then
+    the default will be used (e.g., it will not revert to anonymous id generation).
+    """
+
+    source = Source(
+        id_mapping={"id": {"identifier": identifiers["student"], "attribute": "id"}},
+        defaults={"id": "stu1"},
+    )
+
+    source.stack(
+        cases[0],
+        markdown_to_df(
+            """
+            | first_name |
+            | -          |
+            | Bob        |
+            | Still Bob  |
+            """
+        ),
+    )
+
+    generated_id = list(
+        identifiers["student"].cached_ids[id(cases[0])].named_ids.values()
+    )[0]["id"]
+
+    actual = source.data
+    expected = markdown_to_df(
+        """
+        | first_name | id   |
+        | -          | -    |
+        | Bob        | {s1} |
+        | Still Bob  | {s1} |
+        """.format(
+            s1=generated_id
+        )
+    )
+    assert_frame_equal(actual, expected)
+
+    generated_name_id = list(
+        identifiers["student"].cached_ids[id(cases[0])].named_ids.keys()
+    )[0]
+    assert generated_name_id == source.defaults["id"]
 
 
 def test_setting_values(identifiers, cases):
@@ -353,24 +396,6 @@ def test_multiple_identifers_are_translated(source_w_multiple_ids, identifiers, 
         )
     )
     assert_frame_equal(actual, expected)
-
-
-def test_all_identifying_columns_must_be_present(source_w_multiple_ids, cases):
-    with pytest.raises(dtspec.core.IdentifierWithoutColumnError) as excinfo:
-        source_w_multiple_ids.stack(
-            cases[0],
-            markdown_to_df(
-                """
-            | id | first_name  |
-            | -  | -           |
-            | s1 | Bob         |
-            | s2 | Nancy       |
-            """
-            ),
-        )
-
-    # Error message contains a readable case name
-    assert "TestCase1" in str(excinfo.value).split("\n")[0]
 
 
 def test_source_without_identifier_generates_data(cases):
