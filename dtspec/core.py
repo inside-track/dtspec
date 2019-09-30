@@ -256,7 +256,7 @@ class Target:
                 raise KeyError(
                     f'Target "{self.name}" defines identifier map for column "{column}", '
                     f'but "{column}" not found in actual data.  '
-                    f"columns found: {self.data.columns}"
+                    f"columns found: {list(self.data.columns)}"
                 )
 
             lkp = {
