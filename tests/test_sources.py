@@ -353,6 +353,31 @@ def test_setting_defaults_and_values(identifiers, cases):
     assert_frame_equal(actual, expected)
 
 
+def test_null_in_source_translated_correctly(simple_source, identifiers, cases):
+    simple_source.stack(
+        cases[0],
+        markdown_to_df(
+            """
+        | id     | first_name |
+        | -      | -          |
+        | s1     | {NULL}     |
+        | {NULL} | Nancy      |
+        """
+        ),
+    )
+
+    actual = simple_source.serialize()
+    expected = [
+        {
+            "id": identifiers["student"].generate(case=cases[0], named_id="s1")["id"],
+            "first_name": None,
+        },
+        {"id": None, "first_name": "Nancy"},
+    ]
+
+    assert actual == expected
+
+
 @pytest.fixture
 def source_w_multiple_ids(identifiers):
     return Source(

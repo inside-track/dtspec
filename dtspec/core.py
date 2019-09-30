@@ -178,18 +178,21 @@ class Source:
     def stack(self, case, data, values=None):
         "values override defaults at stack time"
 
-        w_defaults_df = self._add_defaults(data, values)
+        prepped_df = data.copy()
+        prepped_df = self._add_defaults(prepped_df, values)
+        prepped_df = self._special_values(prepped_df)
+
         if self.id_mapping:
-            translated_df = self._translate_identifiers(w_defaults_df, case)
-            self.data = pd.concat([self.data, translated_df], sort=False).reset_index(
+            prepped_df = self._translate_identifiers(prepped_df, case)
+            self.data = pd.concat([self.data, prepped_df], sort=False).reset_index(
                 drop=True
             )
         else:
-            if len(self.data) > 0 and not _frame_is_equal(self.data, w_defaults_df):
+            if len(self.data) > 0 and not _frame_is_equal(self.data, prepped_df):
                 raise CannotStackStaticSourceError(
                     f'In case "{case.name}", attempting to stack data onto source "{self.name}" without identifiers:\n {data}'
                 )
-            self.data = w_defaults_df
+            self.data = prepped_df
 
     def _add_defaults(self, df, values):
         default_values = {**(self.defaults or {}), **(values or {})}
@@ -224,6 +227,10 @@ class Source:
             )
         return df
 
+    @staticmethod
+    def _special_values(df):
+        return df.applymap(lambda v: None if v == "{NULL}" else v)
+
     def serialize(self, orient="records"):
         return json.loads(self.data.to_json(orient=orient))
 
@@ -237,7 +244,11 @@ class Target:
 
     def load_actual(self, records):
         self.data = pd.DataFrame.from_records(records)
+        self._translate_special_values()
         self._translate_identifiers()
+
+    def _translate_special_values(self):
+        self.data = self.data.applymap(lambda v: "{NULL}" if v is None else v)
 
     def _translate_identifiers(self):
         for column, mapto in self.id_mapping.items():
