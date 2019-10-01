@@ -56,7 +56,7 @@ SCHEMA = {
                 "additionalProperties": False,
                 "properties": {
                     "column": {"type": "string"},
-                    "value": {"type": "string"},
+                    "value": {"type": ["string", "null"]},
                 },
             },
         },
@@ -452,7 +452,7 @@ class Api:
                 name=f"{scenario_name}: {case_name}",
                 factory=Factory(
                     sources=self.spec["sources"],
-                    inherit_from=[scenario_factory],
+                    inherit_from=[scenario_factory] if scenario_factory else None,
                     data=case_data,
                 ),
                 expectations=self._parse_spec_expectations(case_json["expected"]),

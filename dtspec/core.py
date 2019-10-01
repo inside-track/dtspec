@@ -128,11 +128,15 @@ class Identifier:
         if named_id not in self.cached_ids[case_id].named_ids:
             self.cached_ids[case_id].named_ids[named_id] = {}
             for attr, generator in self.generators.items():
-                self.cached_ids[case_id].named_ids[named_id][attr] = generator()
+                if named_id:
+                    value = generator()
+                else:
+                    value = None
+                self.cached_ids[case_id].named_ids[named_id][attr] = value
 
         return self.cached_ids[case_id].named_ids[named_id]
 
-    def find(self, attribute, raw_id):
+    def find(self, attribute, raw_id, target_name="Unknown"):
         "Given an attribute and a raw id, return named attribute and case"
         found = SimpleNamespace(named_id=None, case=None)
         for case_name, case in self.cached_ids.items():
@@ -143,7 +147,7 @@ class Identifier:
                     return found
 
         raise UnableToFindNamedIdError(
-            f'Unable to find named identifier for attribute "{attribute}" and value "{raw_id}"'
+            f'In target "{target_name}", unable to find named identifier for attribute "{attribute}" and value "{raw_id}"'
         )
 
 
@@ -174,37 +178,37 @@ class Source:
     def stack(self, case, data, values=None):
         "values override defaults at stack time"
 
-        w_defaults_df = self._add_defaults(data, case, values)
+        prepped_df = data.copy()
+        prepped_df = self._add_defaults(prepped_df, values)
+        prepped_df = self._special_values(prepped_df)
+
         if self.id_mapping:
-            translated_df = self._translate_identifiers(w_defaults_df, case)
-            self.data = pd.concat([self.data, translated_df], sort=False).reset_index(
+            prepped_df = self._translate_identifiers(prepped_df, case)
+            self.data = pd.concat([self.data, prepped_df], sort=False).reset_index(
                 drop=True
             )
         else:
-            if len(self.data) > 0 and not _frame_is_equal(self.data, w_defaults_df):
+            if len(self.data) > 0 and not _frame_is_equal(self.data, prepped_df):
                 raise CannotStackStaticSourceError(
-                    f'In case "{case.name}", attempting to stack data onto source without identifiers:\n {data}'
+                    f'In case "{case.name}", attempting to stack data onto source "{self.name}" without identifiers:\n {data}'
                 )
-            self.data = w_defaults_df
+            self.data = prepped_df
 
-    def _add_defaults(self, df, case, values):
+    def _add_defaults(self, df, values):
         default_values = {**(self.defaults or {}), **(values or {})}
-        if len(default_values) == 0:
-            return df
+
+        if self.id_mapping:
+            identifier_default_columns = set(self.id_mapping.keys()) - (
+                set(default_values.keys()) | set(df.columns)
+            )
+
+            for column in identifier_default_columns:
+                df[column] = [str(uuid.uuid4()) for _ in range(len(df))]
 
         for column, value in default_values.items():
             if column in df.columns:
                 continue
-
-            if isinstance(value, dict) and "identifier" in value:
-                df[column] = None
-                df[column] = df[column].apply(
-                    lambda _, value=value: value["identifier"].generate(
-                        case=case, named_id=uuid.uuid4()
-                    )[value["attribute"]]
-                )
-            else:
-                df[column] = value
+            df[column] = value
 
         return df
 
@@ -212,7 +216,7 @@ class Source:
         missing_columns = set(self.id_mapping.keys()) - set(df.columns)
         if len(missing_columns) > 0:
             raise IdentifierWithoutColumnError(
-                f'In case "{case.name}", data source is missing columns corresponding to identifier attributes: {missing_columns}'
+                f'In case "{case.name}", data source "{self.name}" is missing columns corresponding to identifier attributes: {missing_columns}'
             )
 
         for column, mapto in self.id_mapping.items():
@@ -222,6 +226,10 @@ class Source:
                 )[mapto["attribute"]]
             )
         return df
+
+    @staticmethod
+    def _special_values(df):
+        return df.applymap(lambda v: None if v == "{NULL}" else v)
 
     def serialize(self, orient="records"):
         return json.loads(self.data.to_json(orient=orient))
@@ -236,19 +244,25 @@ class Target:
 
     def load_actual(self, records):
         self.data = pd.DataFrame.from_records(records)
+        self._translate_special_values()
         self._translate_identifiers()
+
+    def _translate_special_values(self):
+        self.data = self.data.applymap(lambda v: "{NULL}" if v is None else v)
 
     def _translate_identifiers(self):
         for column, mapto in self.id_mapping.items():
             if column not in self.data:
                 raise KeyError(
-                    f'Target defines identifier map for column "{column}", '
+                    f'Target "{self.name}" defines identifier map for column "{column}", '
                     f'but "{column}" not found in actual data.  '
-                    f"columns found: {self.data.columns}"
+                    f"columns found: {list(self.data.columns)}"
                 )
 
             lkp = {
-                raw_id: mapto["identifier"].find(mapto["attribute"], raw_id)
+                raw_id: mapto["identifier"].find(
+                    mapto["attribute"], raw_id, target_name=self.name
+                )
                 for raw_id in self.data[column]
             }
             self.data["__dtspec_case__"] = self.data[column].apply(

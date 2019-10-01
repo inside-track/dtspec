@@ -41,13 +41,7 @@ def sources(identifiers):
                     "identifier": identifiers["organization"],
                     "attribute": "id",
                 },
-            },
-            defaults={
-                "organization_id": {
-                    "identifier": identifiers["organization"],
-                    "attribute": "id",
-                }
-            },
+            }
         ),
         "organizations": Source(
             id_mapping={

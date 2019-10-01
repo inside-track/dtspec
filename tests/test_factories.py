@@ -37,17 +37,7 @@ def sources(identifiers):
                     "identifier": identifiers["organization"],
                     "attribute": "id",
                 },
-            },
-            defaults={
-                "external_id": {
-                    "identifier": identifiers["student"],
-                    "attribute": "external_id",
-                },
-                "organization_id": {
-                    "identifier": identifiers["organization"],
-                    "attribute": "id",
-                },
-            },
+            }
         ),
         "organizations": Source(
             id_mapping={
@@ -56,10 +46,7 @@ def sources(identifiers):
                     "identifier": identifiers["organization"],
                     "attribute": "uuid",
                 },
-            },
-            defaults={
-                "uuid": {"identifier": identifiers["organization"], "attribute": "uuid"}
-            },
+            }
         ),
     }
 
@@ -92,7 +79,7 @@ def test_factories_stack_a_source(identifiers, sources):
             s2=identifiers["student"].generate(case="TestCase", named_id="s2")["id"],
         )
     )
-    actual = sources["students"].data.drop(columns=sources["students"].defaults.keys())
+    actual = sources["students"].data[expected.columns]
     assert_frame_equal(actual, expected)
 
 
