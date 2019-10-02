@@ -1,6 +1,6 @@
-# Data Test Spec
+# Data Transform Spec
 
-dtspec is an API for testing data transformations.
+dtspec is an API for specifying and testing data transformations.
 
 ## Introduction
 
@@ -47,10 +47,10 @@ def hello_world_transformer(raw_students):
 
 ````
 
-dtspec is an API that accepts a JSON blob for the test spec.  However, I strongly
+dtspec is an API that accepts a JSON blob for the transformation spec.  However, I strongly
 prefer to write specs in YAML and then convert them into JSON before passing them
-on to dtspec.  To begin writing our test spec, we define the dtspec `version`, a `description`
-of the test spec, and then list out the `sources` and `targets`:
+on to dtspec.  To begin writing our transform spec, we define the dtspec `version`, a `description`
+of the transform spec, and then list out the `sources` and `targets`:
 
 ````yaml
 ---
@@ -87,7 +87,7 @@ factories:
 Lastly, we need to describe how we expect the data to look after it has been transformed.
 To do this, we define **scenarios** and **cases**.  Scenarios are collections of cases
 that share some common data factory or describe similar situations.  For now, our
-test spec will just contain a single scenario and a single case:
+transform spec will just contain a single scenario and a single case:
 
 ````yaml
 scenarios:
@@ -115,7 +115,7 @@ scenarios:
 
 That's it. See also the [full YAML spec](tests/hello_world.yml).
 
-Now that we've described the full test spec, we need to use it.  The first step is to
+Now that we've described the full transform spec, we need to use it.  The first step is to
 parse the YAML file, send it to the dtspec api, and have dtspec generate source data:
 
 ````python
