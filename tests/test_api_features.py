@@ -231,3 +231,12 @@ def test_assertion_messages(api, sources_data, capsys):
         f"Asserting DenormalizingStudentClasses: MissingClasses {Fore.RED}FAILED"
         in captured.out
     )
+
+
+def test_markdown(api):
+    actual = api.to_markdown()
+
+    with open("tests/realistic.md", "r") as recorded_output:
+        expected = recorded_output.read()
+
+    assert actual == expected

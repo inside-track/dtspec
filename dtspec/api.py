@@ -224,8 +224,9 @@ class ApiReferentialError(ApiValidationError):
 
 class Api:
     def __init__(self, json_spec):
+        self.json_spec = json_spec
         self.spec = {}
-        self._parse_spec(json_spec)
+        self._parse_spec(self.json_spec)
 
     def _parse_spec(self, json_spec):
         "Converts the raw JSON spec into internal objects used to generate source data and run assertions"
@@ -479,3 +480,68 @@ class Api:
                 )
             )
         return expectations
+
+    def to_markdown(self):
+        """
+        Converts the user specs into a markdown representation that can be used for documentation
+        """
+
+        indent = lambda n, text: "\n".join(
+            [" " * n + line for line in text.split("\n")]
+        )
+
+        doc = []
+        doc.append("# Data Transform Spec\n")
+        doc.append(self.json_spec["description"])
+
+        doc.append("Data sources:\n")
+        for source in self.json_spec["sources"]:
+            doc.append(f"* {source['source']} - {source.get('description', '')}")
+        doc.append("")
+
+        doc.append("Data targets:\n")
+        for target in self.json_spec["targets"]:
+            doc.append(f"* {target['target']} - {target.get('description', '')}")
+        doc.append("")
+
+        doc.append("## Factories common to all scenarios\n")
+        for factory in self.json_spec["factories"]:
+            doc.append(f"### Factory: {factory['factory']}")
+            doc.append(f"{factory.get('description', '')}")
+            doc.append("")
+
+            for source in factory.get("data", []):
+                doc.append(f"**{source['source']}**:\n")
+                doc.append(f"{source['table']}")
+
+        for scenario in self.json_spec["scenarios"]:
+            doc.append(f"# Scenario: {scenario['scenario']}\n")
+            doc.append(f"Description: {scenario.get('description', '')}")
+
+            doc.append("### Factory common to all cases in this scenario\n")
+            if "parents" in scenario["factory"]:
+                doc.append("Parents:\n")
+                for parent in scenario["factory"]["parents"]:
+                    doc.append(f"* {parent}")
+                doc.append("")
+            for source in scenario["factory"].get("data", []):
+                doc.append(f"**{source['source']}**:\n")
+                doc.append(f"{source['table']}")
+            doc.append("")
+
+            for case in scenario["cases"]:
+                doc.append(f"## Case: {case['case']}\n")
+                doc.append(f"Description: {case.get('description', '')}")
+
+                if "factory" in case:
+                    doc.append("* Given the source data\n")
+                    for source in case["factory"].get("data", []):
+                        doc.append(indent(2, f"**{source['source']}**:\n"))
+                        doc.append(indent(2, f"{source['table']}"))
+
+                doc.append("* Expected target data\n")
+                for target in case["expected"].get("data", []):
+                    doc.append(indent(2, f"**{target['target']}**:\n"))
+                    doc.append(indent(2, f"{target['table']}"))
+
+        return "\n".join(doc)
