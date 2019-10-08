@@ -108,11 +108,14 @@ Description: Students without classes are excluded from denormalized table
 
   **student_classes**:
   
-  | card_id | name   | school_name | class_name      |
-  | -       | -      | -           | -               |
-  | stu1    | Buffy  | Sunnydale   | Applied Stabby  |
-  | stu2    | Willow | Sunnydale   | Good Spells     |
+  | card_id | name   | class_name      |
+  | -       | -      | -               |
+  | stu1    | Buffy  | Applied Stabby  |
+  | stu2    | Willow | Good Spells     |
   
+  Expected constant values:
+  
+    * **school_name**: Sunnydale
 ## Case: MultipleClasses
 
 Description: Students with multiple classes have multiple records

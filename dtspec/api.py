@@ -76,6 +76,7 @@ SCHEMA = {
                         "properties": {
                             "target": {"type": "string"},
                             "table": {"type": "string"},
+                            "values": {"$ref": "#/definitions/column_values"},
                             "by": {"type": "array", "items": {"type": "string"}},
                             "compare_via": {"type": "string"},
                         },
@@ -470,18 +471,26 @@ class Api:
                     f'Unable to find target "{target_name}" referenced in expectation'
                 )
 
+            constants = {}
+            if "values" in expected_data:
+                constants = {
+                    constant["column"]: constant["value"]
+                    for constant in expected_data["values"]
+                }
+
             target = self.spec["targets"][target_name]
             expectations.append(
                 DataExpectation(
                     target=target,
                     table=expected_data["table"],
+                    values=constants,
                     by=expected_data.get("by", []),
                     compare_via=expected_data.get("compare_via", None),
                 )
             )
         return expectations
 
-    def to_markdown(self):
+    def to_markdown(self):  # pylint: disable=too-many-branches
         """
         Converts the user specs into a markdown representation that can be used for documentation
         """
@@ -543,5 +552,13 @@ class Api:
                 for target in case["expected"].get("data", []):
                     doc.append(indent(2, f"**{target['target']}**:\n"))
                     doc.append(indent(2, f"{target['table']}"))
+                    if "values" in target:
+                        doc.append(indent(2, "Expected constant values:\n"))
+                    for constant in target.get("values", []):
+                        doc.append(
+                            indent(
+                                4, f"* **{constant['column']}**: {constant['value']}"
+                            )
+                        )
 
         return "\n".join(doc)

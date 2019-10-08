@@ -206,10 +206,14 @@ scenarios:
           data:
             - target: student_classes
               table: |
-                | card_id | name   | school_name | class_name      |
-                | -       | -      | -           | -               |
-                | stu1    | Buffy  | Sunnydale   | Applied Stabby  |
-                | stu2    | Willow | Sunnydale   | Good Spells     |
+                | card_id | name   | class_name      |
+                | -       | -      | -               |
+                | stu1    | Buffy  | Applied Stabby  |
+                | stu2    | Willow | Good Spells     |
+              # Can also specify column values that are constant over all records in case
+              values:
+                - column: school_name
+                  value: Sunnydale
               by:
                 - card_id
 
