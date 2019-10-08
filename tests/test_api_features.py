@@ -235,8 +235,9 @@ def test_assertion_messages(api, sources_data, capsys):
 
 def test_markdown(api):
     actual = api.to_markdown()
-
-    with open("tests/realistic.md", "r") as recorded_output:
+    with open("tests/__actual_realistic.md", "w") as actual_output:
+        actual_output.write(actual)
+    with open("tests/recorded_realistic.md", "r") as recorded_output:
         expected = recorded_output.read()
 
     assert actual == expected

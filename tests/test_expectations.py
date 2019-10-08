@@ -2,7 +2,7 @@ import pandas as pd
 
 import pytest
 
-from dtspec.core import markdown_to_df
+from dtspec.core import markdown_to_df, Target
 from dtspec.expectations import DataExpectation, MissingExpectedKeysAssertionError
 
 
@@ -21,18 +21,23 @@ def expected_table():
 
 
 @pytest.fixture
+def target():
+    return Target(name="some_target")
+
+
+@pytest.fixture
 def actual_data(expected_table):
     return markdown_to_df(expected_table)
 
 
-def test_passes_when_data_is_the_same(expected_table, actual_data):
-    expectation = DataExpectation("some_target", expected_table)
+def test_passes_when_data_is_the_same(expected_table, actual_data, target):
+    expectation = DataExpectation(target, expected_table)
     expectation.load_actual(actual_data.copy())
     expectation.assert_expected()
 
 
-def test_fails_when_data_is_different(expected_table, actual_data):
-    expectation = DataExpectation("some_target", expected_table)
+def test_fails_when_data_is_different(expected_table, actual_data, target):
+    expectation = DataExpectation(target, expected_table)
 
     actual_data = actual_data.copy()
     actual_data["name"].iloc[1] = "Evil Willow"
@@ -42,8 +47,8 @@ def test_fails_when_data_is_different(expected_table, actual_data):
         expectation.assert_expected()
 
 
-def test_fails_if_sorted_differently(expected_table, actual_data):
-    expectation = DataExpectation("some_target", expected_table)
+def test_fails_if_sorted_differently(expected_table, actual_data, target):
+    expectation = DataExpectation(target, expected_table)
 
     actual_data = actual_data.copy().sort_values("id", ascending=False)
     expectation.load_actual(actual_data)
@@ -52,8 +57,8 @@ def test_fails_if_sorted_differently(expected_table, actual_data):
         expectation.assert_expected()
 
 
-def test_passes_if_sorted_differently_using_by(expected_table, actual_data):
-    expectation = DataExpectation("some_target", expected_table, by=["id"])
+def test_passes_if_sorted_differently_using_by(expected_table, actual_data, target):
+    expectation = DataExpectation(target, expected_table, by=["id"])
 
     actual_data = actual_data.copy().sort_values("id", ascending=False)
     expectation.load_actual(actual_data)
@@ -61,24 +66,24 @@ def test_passes_if_sorted_differently_using_by(expected_table, actual_data):
     expectation.assert_expected()
 
 
-def test_extra_columns_in_actual_are_ignored(expected_table, actual_data):
-    expectation = DataExpectation("some_target", expected_table)
+def test_extra_columns_in_actual_are_ignored(expected_table, actual_data, target):
+    expectation = DataExpectation(target, expected_table)
     actual_data = actual_data.copy()
     actual_data["eman"] = actual_data["name"].apply(lambda v: v[::-1])
     expectation.load_actual(actual_data)
     expectation.assert_expected()
 
 
-def test_raise_on_missing_expected_column(expected_table, actual_data):
-    expectation = DataExpectation("some_target", expected_table)
+def test_raise_on_missing_expected_column(expected_table, actual_data, target):
+    expectation = DataExpectation(target, expected_table)
     actual_data = actual_data.rename(columns={"name": "first_name"})
     expectation.load_actual(actual_data)
     with pytest.raises(AssertionError):
         expectation.assert_expected()
 
 
-def test_raise_when_there_are_extra_actual_records(expected_table, actual_data):
-    expectation = DataExpectation("some_target", expected_table, by=["id"])
+def test_raise_when_there_are_extra_actual_records(expected_table, actual_data, target):
+    expectation = DataExpectation(target, expected_table, by=["id"])
     actual_data = pd.concat(
         [actual_data, pd.DataFrame({"id": ["4"], "name": ["Dawn"]})]
     )
@@ -87,10 +92,8 @@ def test_raise_when_there_are_extra_actual_records(expected_table, actual_data):
         expectation.assert_expected()
 
 
-def test_passes_when_using_compare_on_keys(expected_table, actual_data):
-    expectation = DataExpectation(
-        "some_target", expected_table, by=["id"], compare_via="keys"
-    )
+def test_passes_when_using_compare_on_keys(expected_table, actual_data, target):
+    expectation = DataExpectation(target, expected_table, by=["id"], compare_via="keys")
     actual_data = pd.concat(
         [pd.DataFrame({"id": ["0"], "name": ["The First"]}), actual_data]
     )
@@ -98,7 +101,7 @@ def test_passes_when_using_compare_on_keys(expected_table, actual_data):
     expectation.assert_expected()
 
 
-def test_incompatible_keys_raise_specific_exception():
+def test_incompatible_keys_raise_specific_exception(target):
     expected_table = """
         | id | name   |
         | -  | -      |
@@ -118,9 +121,17 @@ def test_incompatible_keys_raise_specific_exception():
         """
     )
 
-    expectation = DataExpectation(
-        "some_target", expected_table, by=["id"], compare_via="keys"
-    )
+    expectation = DataExpectation(target, expected_table, by=["id"], compare_via="keys")
     expectation.load_actual(actual_data)
     with pytest.raises(MissingExpectedKeysAssertionError):
         expectation.assert_expected()
+
+
+def test_setting_constant_values(expected_table, target):
+    expectation = DataExpectation(
+        target, expected_table, values={"school_name": "Sunnydale High"}
+    )
+    actual_data = markdown_to_df(expected_table)
+    actual_data["school_name"] = "Sunnydale High"
+    expectation.load_actual(actual_data.copy())
+    expectation.assert_expected()

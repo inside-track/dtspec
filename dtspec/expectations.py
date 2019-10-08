@@ -18,13 +18,15 @@ class MissingExpectedKeysAssertionError(Exception):
 
 
 class DataExpectation:
-    def __init__(self, target, table, by=None, compare_via=None):
+    def __init__(self, target, table, values=None, by=None, compare_via=None):
         """
         Compares actual results with a table of expected data.
 
         Args:
             target (str): Name of data target
             table (str): Markdown representation of expected data
+            values (dict): Dictionary where the keys are column names and the values are
+                           the expected values of that column (constant across all records in case).
             by (array): List of fields to do sorted or key-based comparison.
             compare_via (str): Choose either "exact", "sorted", or "keys".
                 * If "exact", then target data must exactly match expected format
@@ -38,6 +40,7 @@ class DataExpectation:
 
         self.target = target
         self.expected_data = markdown_to_df(table)
+        self._add_constants(values or {})
         self.actual_data = None
         self.by = by or []
 
@@ -50,6 +53,10 @@ class DataExpectation:
             raise ValueError(
                 f'Cannot use compare_via={self.compare_via} without a "by" option'
             )
+
+    def _add_constants(self, values):
+        for column, value in values.items():
+            self.expected_data[column] = value
 
     def load_actual(self, actual_data):
         self.actual_data = actual_data
@@ -85,7 +92,7 @@ class DataExpectation:
             ).copy()[self.by]
             if len(missing_expected_keys) > 0:
                 raise MissingExpectedKeysAssertionError(
-                    f"Keys in expected data, not found in actual data:\n{missing_expected_keys}\n"
+                    f"For target {self.target.name}, keys in expected data, not found in actual data:\n{missing_expected_keys}\n"
                     + f"Keys in actual data, not in expected:\n{missing_actual_keys}"
                 )
         else:
@@ -95,7 +102,7 @@ class DataExpectation:
         missing_expected_columns = set(comparison_columns) - set(actual.columns)
         if len(missing_expected_columns) > 0:
             raise AssertionError(
-                f"Missing expected columns: {missing_expected_columns}"
+                f"Target {self.target.name} missing expected columns: {missing_expected_columns}"
             )
 
         assert_frame_equal(
