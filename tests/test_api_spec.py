@@ -122,6 +122,23 @@ def test_target_identifiers_must_exist(spec):
         dtspec.api.Api(error_spec)
 
 
+def test_target_identifier_attribute_must_exist(spec):
+    error_spec = copy.deepcopy(spec)
+    error_spec["targets"].append(
+        {
+            "target": "not.students",
+            "identifier_map": [
+                {
+                    "column": "external_id",
+                    "identifier": {"name": "students", "attribute": "some_typo_id"},
+                }
+            ],
+        }
+    )
+    with pytest.raises(dtspec.api.ApiReferentialError):
+        dtspec.api.Api(error_spec)
+
+
 def test_factories_are_defined(api):
     expected = {
         "SomeStudents": Factory,
