@@ -10,6 +10,9 @@ from types import SimpleNamespace
 import pandas as pd
 from pandas.util.testing import assert_frame_equal
 
+pd.set_option("display.max_columns", 50)
+pd.set_option("display.width", 200)
+
 
 class InvalidHeaderSeparatorError(Exception):
     pass
