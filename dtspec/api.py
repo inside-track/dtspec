@@ -326,13 +326,23 @@ class Api:
         id_mapping = {}
         for id_map in map_json:
             identifier_name = id_map["identifier"]["name"]
+            identifier_attribute = id_map["identifier"]["attribute"]
             if identifier_name not in self.spec["identifiers"]:
                 raise ApiReferentialError(
                     f'Unable to find identifier "{identifier_name}" referenced in {data_type}: "{data_name}"'
                 )
+
+            if (
+                identifier_attribute
+                not in self.spec["identifiers"][identifier_name].attributes
+            ):
+                raise ApiReferentialError(
+                    f'Identifier attribute "{identifier_attribute}" referenced in {data_type}: "{data_name}" '
+                    + f'not present for identifier "{identifier_name}"'
+                )
             id_mapping[id_map["column"]] = {
                 "identifier": self.spec["identifiers"][identifier_name],
-                "attribute": id_map["identifier"]["attribute"],
+                "attribute": identifier_attribute,
             }
         return id_mapping
 
