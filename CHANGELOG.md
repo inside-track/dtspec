@@ -1,5 +1,13 @@
 # dtspec Changelog
 
+## 0.3.0
+
+* Name of this project is now "Data Transform Spec".
+* Rudamentary method to convert spec into a markdown document.
+* Can now use "values" to specify constants in target data expectations.
+* Improved user-facing error messaging.
+
+
 ## 0.2.0
 
 * Identifiers can now be null.
