@@ -34,7 +34,10 @@ def serialize_actuals(actuals):
         return str_df.combine(nulls_df, replace_nulls)
 
     return {
-        target_name: json.loads(stringify_pd(dataframe).to_json(orient="records"))
+        target_name: {
+            "records": json.loads(stringify_pd(dataframe).to_json(orient="records")),
+            "columns": list(dataframe.columns),
+        }
         for target_name, dataframe in actuals.items()
     }
 
