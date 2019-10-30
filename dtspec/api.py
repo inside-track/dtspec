@@ -255,14 +255,35 @@ class Api:
         """
         Used to load data containing the actual results to be compared with expectations
 
-        Expecting a json object with keys that are the names of data targets
-        and values that are an array of records.  Each record is a json object
-        with keys that are column names and values that are the record column values.
+        Expecting a json object with keys that are the names of data targets and the
+        values contain the individual records for the target, and description of the
+        columns present in the target.
+
+        Example::
+
+            {
+                "students": {
+                    "records": [
+                        {"id": "1", "name": "Buffy", "school_id": "1"},
+                        {"id": "2", "name": "Willow", "school_id": "1"},
+                    ],
+                    "columns": ["id", "name", "school_id"]
+                },
+                "schools": {
+                    "records": [
+                        {"id": "1", "name": "Sunnydale"}
+                    ],
+                    "columns": ["id", "name"]
+                }
+            }
         """
 
-        for target, records in actuals_json.items():
+        for target, target_data in actuals_json.items():
+            records = target_data["records"]
+            columns = target_data.get("columns", None)
+
             print(f"Loading actuals for target {target}")
-            self.spec["targets"][target].load_actual(records)
+            self.spec["targets"][target].load_actual(records, columns=columns)
 
     def assert_expectations(self):
         "Runs all of the assertions defined in the spec against the actual data"

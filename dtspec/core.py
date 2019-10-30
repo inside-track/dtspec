@@ -238,6 +238,10 @@ class Source:
         return json.loads(self.data.to_json(orient=orient))
 
 
+class EmptyDataNoColumnsError(Exception):
+    pass
+
+
 class Target:
     def __init__(self, id_mapping=None, name=None, description=None):
         self.id_mapping = id_mapping or {}
@@ -245,8 +249,32 @@ class Target:
         self.description = description
         self.data = pd.DataFrame()
 
-    def load_actual(self, records):
-        self.data = pd.DataFrame.from_records(records)
+    def load_actual(self, records, columns=None):
+        """
+        Loads actual data into a target.  Used for comparisons with expected.
+
+        Args:
+            records (list): A list of dictionaries where each dictionary has keys
+                that are the names of the columns in the target.
+            columns (list): A list of column names (needed if there is a chance that
+                records will be an empty list, e.g., no records)
+
+
+        Examples:
+            Load 2 records into the target::
+
+                mytarget.load_actual([
+                    {"id": "1", "name": "Buffy"},
+                    {"id": "2", "name": "Willow"},
+                ], columns=["id", "name"])
+        """
+
+        if len(records) == 0 and len(columns or []) == 0:
+            raise EmptyDataNoColumnsError(
+                f'Attempting to load target "{self.name}" with 0 records without specifying columns.'
+            )
+
+        self.data = pd.DataFrame.from_records(records, columns=columns)
         self._translate_special_values()
         self._translate_identifiers()
 

@@ -27,7 +27,10 @@ def serialize_actuals(actuals):
     "Converts Pandas dataframe results into form needed to load dtspec api actuals"
 
     return {
-        target_name: json.loads(dataframe.astype(str).to_json(orient="records"))
+        target_name: {
+            "records": json.loads(dataframe.astype(str).to_json(orient="records")),
+            "columns": list(dataframe.columns),
+        }
         for target_name, dataframe in actuals.items()
     }
 

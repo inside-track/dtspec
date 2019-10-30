@@ -89,3 +89,22 @@ def test_raises_error_if_raw_id_not_found(simple_target, simple_data):
     bad_data[1]["id"] = 123456789
     with pytest.raises(dtspec.core.UnableToFindNamedIdError):
         simple_target.load_actual(bad_data)
+
+
+def test_empty_data_can_be_loaded_with_columns_specified(simple_target):
+    simple_target.load_actual([], columns=["id", "first_name"])
+
+    actual = simple_target.data.drop(columns="__dtspec_case__")
+    expected = markdown_to_df(
+        """
+        | id   | first_name |
+        | -    | -          |
+        """
+    )
+
+    assert_frame_equal(actual, expected)
+
+
+def test_raises_if_data_is_empty_wo_columns_specified(simple_target):
+    with pytest.raises(dtspec.core.EmptyDataNoColumnsError):
+        simple_target.load_actual([])
