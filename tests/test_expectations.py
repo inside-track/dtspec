@@ -2,7 +2,7 @@ import pandas as pd
 
 import pytest
 
-from dtspec.core import markdown_to_df, Target
+from dtspec.core import markdown_to_df, Target, BadMarkdownTableError
 from dtspec.expectations import DataExpectation, MissingExpectedKeysAssertionError
 
 
@@ -135,3 +135,35 @@ def test_setting_constant_values(expected_table, target):
     actual_data["school_name"] = "Sunnydale High"
     expectation.load_actual(actual_data.copy())
     expectation.assert_expected()
+
+
+def test_raises_when_markdown_is_missing(target):
+    with pytest.raises(BadMarkdownTableError):
+        DataExpectation(target, None)
+
+
+def test_raises_when_markdown_is_missing_header_sep(target):
+    with pytest.raises(BadMarkdownTableError):
+        DataExpectation(
+            target,
+            """
+            | id | name   |
+            | 1  | Buffy  |
+            | 2  | Willow |
+            | 3  | Xander |
+            """,
+        )
+
+
+def test_raises_when_markdown_causes_pandas_failures(target):
+    with pytest.raises(BadMarkdownTableError):
+        DataExpectation(
+            target,
+            """
+            | id name   |
+            | - | - |
+            | 1  |
+            | 2  | Willow |
+            | 3  | Xander |
+            """,
+        )

@@ -18,8 +18,12 @@ class InvalidHeaderSeparatorError(Exception):
     pass
 
 
-def markdown_to_df(markdown):
-    cleaned = markdown
+class BadMarkdownTableError(Exception):
+    pass
+
+
+def _clean_markdown(markdown):
+    cleaned = copy.copy(markdown)
 
     # Remove trailing comments
     cleaned = re.compile(r"(#[^\|]*$)", flags=re.MULTILINE).sub("", cleaned)
@@ -43,13 +47,29 @@ def markdown_to_df(markdown):
     # Unsplit
     cleaned = "\n".join(cleaned)
 
-    df = pd.read_csv(
-        io.StringIO(cleaned),
-        sep="|",
-        na_values="#NULL",
-        keep_default_na=False,
-        dtype=str,
-    )
+    return cleaned
+
+
+def markdown_to_df(markdown):
+    try:
+        cleaned = _clean_markdown(markdown)
+    except (TypeError, InvalidHeaderSeparatorError) as err:
+        raise BadMarkdownTableError(
+            f"Unabled to parse markdown table:\n{markdown}\n\n" + f"Reason: {err}"
+        )
+
+    try:
+        df = pd.read_csv(
+            io.StringIO(cleaned),
+            sep="|",
+            na_values="#NULL",
+            keep_default_na=False,
+            dtype=str,
+        )
+    except pd.errors.ParserError as err:
+        raise BadMarkdownTableError(
+            f"Unable to parse markdown table:\n{markdown}\n\n" + f"Reason: {err}"
+        )
 
     return df
 
@@ -352,7 +372,14 @@ class Factory:
 
     def _parse_tables(self):
         for source_name, source_def in self.data.items():
-            self.data[source_name]["dataframe"] = markdown_to_df(source_def["table"])
+            try:
+                self.data[source_name]["dataframe"] = markdown_to_df(
+                    source_def["table"]
+                )
+            except BadMarkdownTableError as err:
+                raise BadMarkdownTableError(
+                    f"Unable to generate data for source {source_name}:\n{err}"
+                )
 
     def _compose_data(self, inherit_from):
         if inherit_from is None:
