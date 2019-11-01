@@ -1,6 +1,6 @@
 import pandas.util.testing
 
-from dtspec.core import markdown_to_df
+from dtspec.core import markdown_to_df, BadMarkdownTableError
 
 
 def assert_frame_equal(actual, expected, **kwargs):
@@ -39,7 +39,13 @@ class DataExpectation:
         """
 
         self.target = target
-        self.expected_data = markdown_to_df(table)
+        try:
+            self.expected_data = markdown_to_df(table)
+        except BadMarkdownTableError as err:
+            raise BadMarkdownTableError(
+                f"Unable to generate data for target {self.target}:\n{err}"
+            )
+
         self._add_constants(values or {})
         self.actual_data = None
         self.by = by or []

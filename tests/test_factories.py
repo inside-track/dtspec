@@ -1,7 +1,13 @@
 from copy import deepcopy
 import pytest
 
-from dtspec.core import markdown_to_df, Identifier, Factory, Source
+from dtspec.core import (
+    markdown_to_df,
+    Identifier,
+    Factory,
+    Source,
+    BadMarkdownTableError,
+)
 
 from tests import assert_frame_equal
 
@@ -398,3 +404,42 @@ def test_merge_data():
         "organizations": {"table": "b", "dataframe": "b"},
     }
     assert actual == expected
+
+
+def test_raises_when_markdown_is_missing(sources):
+    # Common mistake: use "data" instead of "table", resulting in None being in "table"
+    with pytest.raises(BadMarkdownTableError):
+        Factory(data={"students": {"table": None}}, sources=sources)
+
+
+def test_raises_when_markdown_is_missing_header_sep(sources):
+    with pytest.raises(BadMarkdownTableError):
+        Factory(
+            data={
+                "students": {
+                    "table": """
+                    | id | first_name |
+                    | s1 | Buffy      |
+                    | s2 | Willow     |
+                    """
+                }
+            },
+            sources=sources,
+        )
+
+
+def test_raises_when_markdown_causes_pandas_failures(sources):
+    with pytest.raises(BadMarkdownTableError):
+        Factory(
+            data={
+                "students": {
+                    "table": """
+                    | id  first_name |
+                    | -  | -          |
+                    | s1 |
+                    | s2 | Willow     |
+                    """
+                }
+            },
+            sources=sources,
+        )
