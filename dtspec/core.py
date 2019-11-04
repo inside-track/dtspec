@@ -13,6 +13,8 @@ from pandas.util.testing import assert_frame_equal
 pd.set_option("display.max_columns", 50)
 pd.set_option("display.width", 200)
 
+NULL_TOKEN = "{NULL}"
+
 
 class InvalidHeaderSeparatorError(Exception):
     pass
@@ -60,11 +62,7 @@ def markdown_to_df(markdown):
 
     try:
         df = pd.read_csv(
-            io.StringIO(cleaned),
-            sep="|",
-            na_values="#NULL",
-            keep_default_na=False,
-            dtype=str,
+            io.StringIO(cleaned), sep="|", keep_default_na=False, dtype=str
         )
     except pd.errors.ParserError as err:
         raise BadMarkdownTableError(
@@ -132,9 +130,10 @@ class UnableToFindNamedIdError(Exception):
 
 
 class Identifier:
-    def __init__(self, attributes):
+    def __init__(self, attributes, name=None):
         self.attributes = attributes
         self.cached_ids = {}
+        self.name = name
 
         self.generators = {}
         for attr, props in self.attributes.items():
@@ -170,7 +169,8 @@ class Identifier:
                     return found
 
         raise UnableToFindNamedIdError(
-            f'In target "{target_name}", unable to find named identifier for attribute "{attribute}" and value "{raw_id}"'
+            f'In target "{target_name}", unable to find named identifier for value "{raw_id}" '
+            + f'belonging to identifier "{self.name}" and attribute "{attribute}"'
         )
 
 
@@ -252,13 +252,17 @@ class Source:
 
     @staticmethod
     def _special_values(df):
-        return df.applymap(lambda v: None if v == "{NULL}" else v)
+        return df.applymap(lambda v: None if v == NULL_TOKEN else v)
 
     def serialize(self, orient="records"):
         return json.loads(self.data.to_json(orient=orient))
 
 
 class EmptyDataNoColumnsError(Exception):
+    pass
+
+
+class UnableToFindCaseError(Exception):
     pass
 
 
@@ -295,14 +299,8 @@ class Target:
             )
 
         self.data = pd.DataFrame.from_records(records, columns=columns)
-        self._translate_special_values()
-        self._translate_identifiers()
 
-    def _translate_special_values(self):
-        self.data = self.data.applymap(lambda v: "{NULL}" if v is None else v)
-
-    def _translate_identifiers(self):
-        for column, mapto in self.id_mapping.items():
+        for column in self.id_mapping.keys():
             if column not in self.data:
                 raise KeyError(
                     f'Target "{self.name}" defines identifier map for column "{column}", '
@@ -310,18 +308,54 @@ class Target:
                     f"columns found: {list(self.data.columns)}"
                 )
 
-            lkp = {
-                raw_id: mapto["identifier"].find(
-                    mapto["attribute"], raw_id, target_name=self.name
+        self._translate_special_values()
+        self._lookup_case()
+        self._translate_identifiers()
+
+    def _translate_special_values(self):
+        self.data = self.data.applymap(lambda v: NULL_TOKEN if v is None else v)
+
+    def _translate_identifiers(self):
+        for column, mapto in self.id_mapping.items():
+
+            def _lkp_named_id(v, mapto=mapto):
+                if v == NULL_TOKEN:
+                    return v
+                return (
+                    mapto["identifier"]
+                    .find(attribute=mapto["attribute"], raw_id=v, target_name=self.name)
+                    .named_id
                 )
-                for raw_id in self.data[column]
-            }
-            self.data["__dtspec_case__"] = self.data[column].apply(
-                lambda v, lkp=lkp: lkp[v].case
+
+            self.data[column] = self.data[column].apply(_lkp_named_id)
+
+    def _lookup_case(self):
+        if len(self.data) == 0:
+            self.data["__dtspec_case__"] = pd.Series()
+            return
+
+        if len(self.id_mapping) == 0:
+            return
+
+        def _lkp_case(row):
+            for column, mapto in self.id_mapping.items():
+                if row[column] == NULL_TOKEN:
+                    continue
+                return (
+                    mapto["identifier"]
+                    .find(
+                        attribute=mapto["attribute"],
+                        raw_id=row[column],
+                        target_name=self.name,
+                    )
+                    .case
+                )
+            raise UnableToFindCaseError(
+                f'For target "{self.name}", unable to find case for the following record. '
+                + f"Perhaps all identifiers null?: {dict(row)}\n"
             )
-            self.data[column] = self.data[column].apply(
-                lambda v, lkp=lkp: lkp[v].named_id
-            )
+
+        self.data["__dtspec_case__"] = self.data.apply(_lkp_case, axis=1)
 
     def case_data(self, case):
         if "__dtspec_case__" not in self.data.columns:
