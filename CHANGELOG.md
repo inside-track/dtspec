@@ -1,5 +1,10 @@
 # dtspec Changelog
 
+## 0.5.0
+
+* Null identifiers can now be in targets, as long as one column can be used to identify
+  a record as belonging to a case.
+
 ## 0.4.0
 
 * [breaking] Loading actuals now expect a "columns" field to be present.  This
