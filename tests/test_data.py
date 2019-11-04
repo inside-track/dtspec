@@ -36,21 +36,6 @@ def test_convert_table_to_df_with_blanks():
     assert_frame_equal(actual, expected)
 
 
-def test_convert_table_to_df_with_nulls():
-    given = """
-        | id | name  |
-        | -  | -     |
-        | 1  | one   |
-        | 2  | #NULL |
-        | 3  | three |
-        """
-
-    expected = pd.DataFrame({"id": ["1", "2", "3"], "name": ["one", None, "three"]})
-    actual = markdown_to_df(given)
-
-    assert_frame_equal(actual, expected)
-
-
 def test_ignores_trailing_comments():
     given = """
         | id | name  |

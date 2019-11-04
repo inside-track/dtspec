@@ -321,7 +321,9 @@ class Api:
                 attr_args = {k: v for k, v in attr.items() if k != "field"}
                 attributes[attr_name] = attr_args
 
-            self.spec["identifiers"][identifier_name] = Identifier(attributes)
+            self.spec["identifiers"][identifier_name] = Identifier(
+                attributes, name=identifier_name
+            )
 
     def _parse_spec_sources(self, json_spec):
         self.spec["sources"] = {}

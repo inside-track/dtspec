@@ -26,6 +26,16 @@ def simple_target(identifiers):
 
 
 @pytest.fixture
+def multiple_identifier_target(identifiers):
+    return Target(
+        id_mapping={
+            "id": {"identifier": identifiers["student"], "attribute": "id"},
+            "uuid": {"identifier": identifiers["student"], "attribute": "uuid"},
+        }
+    )
+
+
+@pytest.fixture
 def cases():
     return [Case(name="TestCase1"), Case(name="TestCase2")]
 
@@ -33,27 +43,27 @@ def cases():
 @pytest.fixture
 def stu(identifiers, cases):
     return {
-        "c1stu1": identifiers["student"].generate(case=cases[0], named_id="stu1")["id"],
-        "c1stu2": identifiers["student"].generate(case=cases[0], named_id="stu2")["id"],
-        "c2stu1": identifiers["student"].generate(case=cases[1], named_id="stu1")["id"],
-        "c2stu2": identifiers["student"].generate(case=cases[1], named_id="stu2")["id"],
+        "c1stu1": identifiers["student"].generate(case=cases[0], named_id="stu1"),
+        "c1stu2": identifiers["student"].generate(case=cases[0], named_id="stu2"),
+        "c2stu1": identifiers["student"].generate(case=cases[1], named_id="stu1"),
+        "c2stu2": identifiers["student"].generate(case=cases[1], named_id="stu2"),
     }
 
 
 @pytest.fixture
 def simple_data(stu):
     return [
-        {"id": stu["c1stu1"], "first_name": "Buffy"},
-        {"id": stu["c1stu2"], "first_name": "Willow"},
-        {"id": stu["c2stu1"], "first_name": "Faith"},
-        {"id": stu["c2stu2"], "first_name": "Willow"},
+        {"id": stu["c1stu1"]["id"], "first_name": "Buffy"},
+        {"id": stu["c1stu2"]["id"], "first_name": "Willow"},
+        {"id": stu["c2stu1"]["id"], "first_name": "Faith"},
+        {"id": stu["c2stu2"]["id"], "first_name": "Willow"},
     ]
 
 
 def test_actual_data_is_loaded_ids_translated(simple_target, simple_data):
     simple_target.load_actual(simple_data)
 
-    actual = simple_target.data.drop(columns="__dtspec_case__")
+    actual = simple_target.data.drop(columns=["__dtspec_case__"])
     expected = markdown_to_df(
         """
         | id   | first_name |
@@ -108,3 +118,50 @@ def test_empty_data_can_be_loaded_with_columns_specified(simple_target):
 def test_raises_if_data_is_empty_wo_columns_specified(simple_target):
     with pytest.raises(dtspec.core.EmptyDataNoColumnsError):
         simple_target.load_actual([])
+
+
+def test_null_identifiers_go_to_the_right_case(multiple_identifier_target, stu, cases):
+    """
+    If an identifying column can be null, then there is no way to
+    associate it with a case unless there is another non-null identifying column.
+    """
+
+    multiple_identifier_target.load_actual(
+        [
+            {
+                "id": stu["c1stu1"]["id"],
+                "uuid": stu["c1stu1"]["uuid"],
+                "first_name": "Buffy",
+            },
+            {"id": stu["c2stu2"]["id"], "uuid": None, "first_name": "Willow"},
+        ]
+    )
+
+    actual = multiple_identifier_target.case_data(cases[1])
+    expected = markdown_to_df(
+        """
+        | id   | uuid   | first_name |
+        | -    | -      | -          |
+        | stu2 | {NULL} | Willow     |
+        """
+    )
+
+    assert_frame_equal(actual, expected)
+
+
+def test_null_identifiers_raise_if_all_null(multiple_identifier_target, stu):
+    """
+    If all identifying columns are null, raise a descriptive error.
+    """
+
+    with pytest.raises(dtspec.core.UnableToFindCaseError):
+        multiple_identifier_target.load_actual(
+            [
+                {
+                    "id": stu["c1stu1"]["id"],
+                    "uuid": stu["c1stu1"]["uuid"],
+                    "first_name": "Buffy",
+                },
+                {"id": None, "uuid": None, "first_name": "Willow"},
+            ]
+        )
