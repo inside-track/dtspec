@@ -246,6 +246,7 @@ def test_scenarios_have_cases(api):
         "BasicDenormalization": Case,
         "MissingClasses": Case,
         "MultipleClasses": Case,
+        "IdConcatenation": Case,
     }
     actual = {
         k: v.__class__

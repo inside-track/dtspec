@@ -78,6 +78,10 @@ def realistic_transformer(
         dim_date.rename(columns={"date": "start_date"}), how="left", on="start_date"
     )
 
+    student_classes["student_class_id"] = student_classes.apply(
+        lambda row: "-".join([str(row["card_id"]), str(row["class_name"])]), axis=1
+    )
+
     students_per_school = (
         student_schools.groupby(["school_name"])
         .size()
@@ -148,18 +152,22 @@ def test_actuals_are_loaded(api_w_actuals):
         """
         | card_id | name   | school_name | class_name        | season       |
         | -       | -      | -           | -                 | -            |
-        | stu1    | Buffy  | Sunnydale   |  Applied Stabby   | Fall 2001    |
+        | stu1    | Buffy  | Sunnydale   |  Applied Stabby   | Fall 2001    | # BasicDenormalization
         | stu2    | Willow | Sunnydale   |     Good Spells   | Spring 2002  |
         | stu3    | Bill   | San Dimas   |         Station   | Fall 2002    |
         | stu4    | Ted    | San Dimas   | Being Excellent   | Fall 2002    |
-        | stu1    | Buffy  | Sunnydale   |  Applied Stabby   | Summer 2002  |
+        | stu1    | Buffy  | Sunnydale   |  Applied Stabby   | Summer 2002  | # MissingClasses
         | stu2    | Willow | Sunnydale   |     Good Spells   | Summer 2002  |
         | stu1    | Buffy  | Sunnydale   |  Applied Stabby   | Summer 2002  |
-        | stu2    | Willow | Sunnydale   |     Good Spells   | Summer 2002  |
+        | stu2    | Willow | Sunnydale   |     Good Spells   | Summer 2002  | # MultipleClasses
         | stu2    | Willow | Sunnydale   | Season 6 Spells   | Summer 2002  |
         | stu3    | Bill   | San Dimas   |         Station   | Summer 2002  |
         | stu4    | Ted    | San Dimas   | Being Excellent   | Summer 2002  |
         | stu4    | Ted    | San Dimas   |         Station   | Summer 2002  |
+        | stu1    | Buffy  | Sunnydale   |  Applied Stabby   | Fall 2001    | # IdConcatenation
+        | stu2    | Willow | Sunnydale   |     Good Spells   | Spring 2002  |
+        | stu3    | Bill   | San Dimas   |         Station   | Fall 2002    |
+        | stu4    | Ted    | San Dimas   | Being Excellent   | Fall 2002    |
         """
     )
 

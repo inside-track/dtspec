@@ -295,7 +295,7 @@ This won't quite work as is, because we're missing something.  We have
 two cases that describe variations on the source data `raw_students`
 and the output `salutations`.  dtspec collects the source data
 definitions from each case and stacks them into a single data source.
-The user then run the transformations on that source and generates a
+The user then runs the transformations on that source and generates a
 single target to provide back to dtspec.  But dtspec has to know which record
 belongs to which case.  To do this, we have to define an
 **identifier** that tells dtspec which columns should be used to identify
@@ -370,6 +370,34 @@ api.load_actuals(serialized_actuals)
 api.assert_expectations()
 ````
 
+#### Embedded Identifiers
+
+It is also possible to embed identifiers in the value of a particular column.
+For example, suppose our `salutation` column said hello to the `id` instead
+of the name of the person.  To make this work, we have to put a particular
+string pattern in the column that indicates the name of the identifier, the
+attribute, and the named id - `{identifier.attribute[named_id]}`.  The
+yaml spec would look like:
+
+````yaml
+      - case: HelloGang
+        description: Make sure we say hello to everyone
+        expected:
+          data:
+            - target: salutations
+              table: |
+                | id | name   | clique      | salutation             |
+                | -  | -      | -           | -                      |
+                | 1  | Buffy  | Scooby Gang | Hello {students.id[1]} |
+                | 2  | Willow | Scooby Gang | Hello {students.id[2]} |
+````
+The [realistic example](tests/realistic.yml) discussed below has another example
+of using embedded identifiers.
+
+**Note** that embedded identifiers cannot be used to associate records
+with cases.  A target must have at least one column listed in the
+`identifier_map` section.
+
 ### A More Realistic Example
 
 Finally, let's example a more realistic example that one might
@@ -399,6 +427,10 @@ def realistic_transformer(raw_students, raw_schools, raw_classes, dim_date):
         on="student_id",
     ).merge(
         dim_date.rename(columns={"date": "start_date"}), how="left", on="start_date"
+    )
+
+    student_classes["student_class_id"] = student_classes.apply(
+        lambda row: "-".join([str(row["card_id"]), str(row["class_name"])]), axis=1
     )
 
     students_per_school = (

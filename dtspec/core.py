@@ -72,6 +72,33 @@ def markdown_to_df(markdown):
     return df
 
 
+def translate_embedded_identifiers(df, case, identifiers, identifier_regex=None):
+    identifier_regex = identifier_regex or re.compile(
+        r"\{(?P<identifier>\w+)\.(?P<attribute>\w+)\[(?P<named_id>[^\[\]]+)\]\}"
+    )
+
+    def translate_id(v):
+        if not isinstance(v, str):
+            return v
+
+        re_match = identifier_regex.search(v)
+        if not re_match:
+            return v
+
+        try:
+            translated_id = identifiers[re_match["identifier"]].generate(
+                case=case, named_id=re_match["named_id"]
+            )[re_match["attribute"]]
+        except KeyError as _err:
+            raise UnableToFindNamedIdError(
+                f"Error finding embedded named identifier in case {case.name}: "
+                + f"failed finding identifier named '{re_match['identifier']}' with attribute '{re_match['attribute']}'"
+            )
+        return identifier_regex.sub(translated_id, v)
+
+    return df.applymap(translate_id)
+
+
 class UniqueIdGenerator:  # pylint: disable=too-few-public-methods
     """
     Class used to build id generators.
@@ -191,11 +218,19 @@ class CannotStackStaticSourceError(Exception):
 
 
 class Source:
-    def __init__(self, defaults=None, id_mapping=None, name=None, description=None):
+    def __init__(
+        self,
+        defaults=None,
+        id_mapping=None,
+        name=None,
+        description=None,
+        identifiers=None,
+    ):
         self.defaults = defaults
         self.id_mapping = id_mapping
         self.name = name
         self.description = description
+        self.identifiers = identifiers or {}
         self.data = pd.DataFrame()
 
     def stack(self, case, data, values=None):
@@ -204,9 +239,10 @@ class Source:
         prepped_df = data.copy()
         prepped_df = self._add_defaults(prepped_df, values)
         prepped_df = self._special_values(prepped_df)
+        prepped_df = translate_embedded_identifiers(prepped_df, case, self.identifiers)
 
         if self.id_mapping:
-            prepped_df = self._translate_identifiers(prepped_df, case)
+            prepped_df = self._translate_column_identifiers(prepped_df, case)
             self.data = pd.concat([self.data, prepped_df], sort=False).reset_index(
                 drop=True
             )
@@ -235,7 +271,7 @@ class Source:
 
         return df
 
-    def _translate_identifiers(self, df, case):
+    def _translate_column_identifiers(self, df, case):
         missing_columns = set(self.id_mapping.keys()) - set(df.columns)
         if len(missing_columns) > 0:
             raise IdentifierWithoutColumnError(
@@ -310,12 +346,12 @@ class Target:
 
         self._translate_special_values()
         self._lookup_case()
-        self._translate_identifiers()
+        self._translate_column_identifiers()
 
     def _translate_special_values(self):
         self.data = self.data.applymap(lambda v: NULL_TOKEN if v is None else v)
 
-    def _translate_identifiers(self):
+    def _translate_column_identifiers(self):
         for column, mapto in self.id_mapping.items():
 
             def _lkp_named_id(v, mapto=mapto):
@@ -451,4 +487,4 @@ class Case:  # pylint: disable=too-few-public-methods
     def assert_expectations(self):
         for expectation in self.expectations:
             expectation.load_actual(expectation.target.case_data(self))
-            expectation.assert_expected()
+            expectation.assert_expected(self)

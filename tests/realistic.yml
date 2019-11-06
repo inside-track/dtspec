@@ -248,6 +248,21 @@ scenarios:
                 - card_id
                 - class_name
 
+      - case: IdConcatenation
+        description: Identifiers can be embedded as strings in expectations
+        expected:
+          data:
+            - target: student_classes
+              table: |
+                | card_id | class_name      | student_class_id                             |
+                | -       | -               | -                                            |
+                | stu1    | Applied Stabby  | {students.external_id[stu1]}-Applied Stabby  |
+                | stu2    | Good Spells     | {students.external_id[stu2]}-Good Spells     |
+                | stu3    | Station         | {students.external_id[stu3]}-Station         |
+                | stu4    | Being Excellent | {students.external_id[stu4]}-Being Excellent |
+              by:
+                - card_id
+
   - scenario: StudentAggregation
     description: Counts students per school
     factory:

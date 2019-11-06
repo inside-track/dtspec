@@ -1,6 +1,10 @@
 import pandas.util.testing
 
-from dtspec.core import markdown_to_df, BadMarkdownTableError
+from dtspec.core import (
+    markdown_to_df,
+    BadMarkdownTableError,
+    translate_embedded_identifiers,
+)
 
 
 def assert_frame_equal(actual, expected, **kwargs):
@@ -18,7 +22,9 @@ class MissingExpectedKeysAssertionError(Exception):
 
 
 class DataExpectation:
-    def __init__(self, target, table, values=None, by=None, compare_via=None):
+    def __init__(
+        self, target, table, values=None, by=None, compare_via=None, identifiers=None
+    ):
         """
         Compares actual results with a table of expected data.
 
@@ -39,16 +45,10 @@ class DataExpectation:
         """
 
         self.target = target
-        try:
-            self.expected_data = markdown_to_df(table)
-        except BadMarkdownTableError as err:
-            raise BadMarkdownTableError(
-                f"Unable to generate data for target {self.target}:\n{err}"
-            )
-
-        self._add_constants(values or {})
+        self.values = values or {}
         self.actual_data = None
         self.by = by or []
+        self.identifiers = identifiers or {}
 
         if len(self.by) > 0:
             self.compare_via = compare_via or "sorted"
@@ -59,15 +59,31 @@ class DataExpectation:
             raise ValueError(
                 f'Cannot use compare_via={self.compare_via} without a "by" option'
             )
+        self.expected_data = self._build_expected_data(table)
 
-    def _add_constants(self, values):
-        for column, value in values.items():
-            self.expected_data[column] = value
+    def _build_expected_data(self, table):
+        try:
+            expected_df = markdown_to_df(table)
+        except BadMarkdownTableError as err:
+            raise BadMarkdownTableError(
+                f"Unable to generate data for target {self.target}:\n{err}"
+            )
+
+        self._add_constants(expected_df)
+        return expected_df
+
+    def _add_constants(self, df):
+        for column, value in self.values.items():
+            df[column] = value
 
     def load_actual(self, actual_data):
         self.actual_data = actual_data
 
-    def assert_expected(self):
+    def assert_expected(self, case):
+        self.expected_data = translate_embedded_identifiers(
+            self.expected_data, case, self.identifiers
+        )
+
         if self.compare_via == "exact":
             expected = self.expected_data.reset_index(drop=True)
             actual = self.actual_data.reset_index(drop=True)
