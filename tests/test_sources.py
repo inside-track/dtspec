@@ -485,3 +485,36 @@ def test_source_without_identifer_raises_if_data_changes(cases):
 
     # Error message contains a readable case name
     assert "TestCase1" in str(excinfo.value).split("\n")[0]
+
+
+def test_embedded_identifiers_are_translated(identifiers, cases):
+    source = Source(
+        id_mapping={"id": {"identifier": identifiers["student"], "attribute": "id"}},
+        identifiers=identifiers,
+    )
+
+    source.stack(
+        cases[0],
+        markdown_to_df(
+            """
+        | id | prefixed_id         | first_name |
+        | -  | -                   | -          |
+        | s1 | IT-{student.id[s1]} | Bob        |
+        | s2 | IT-{student.id[s2]} | Nancy      |
+        """
+        ),
+    )
+
+    actual = source.data
+    expected = markdown_to_df(
+        """
+        | id   | prefixed_id | first_name |
+        | -    | -           | -          |
+        | {s1} | IT-{s1}     | Bob        |
+        | {s2} | IT-{s2}     | Nancy      |
+        """.format(
+            s1=identifiers["student"].generate(case=cases[0], named_id="s1")["id"],
+            s2=identifiers["student"].generate(case=cases[0], named_id="s2")["id"],
+        )
+    )
+    assert_frame_equal(actual, expected)

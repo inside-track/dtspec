@@ -145,6 +145,20 @@ Description: Students with multiple classes have multiple records
   | stu4    | Ted    | San Dimas   | Being Excellent |
   | stu4    | Ted    | San Dimas   | Station         |
   
+## Case: IdConcatenation
+
+Description: Identifiers can be embedded as strings in expectations
+* Expected target data
+
+  **student_classes**:
+  
+  | card_id | class_name      | student_class_id                             |
+  | -       | -               | -                                            |
+  | stu1    | Applied Stabby  | {students.external_id[stu1]}-Applied Stabby  |
+  | stu2    | Good Spells     | {students.external_id[stu2]}-Good Spells     |
+  | stu3    | Station         | {students.external_id[stu3]}-Station         |
+  | stu4    | Being Excellent | {students.external_id[stu4]}-Being Excellent |
+  
 # Scenario: StudentAggregation
 
 Description: Counts students per school

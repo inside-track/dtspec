@@ -343,6 +343,7 @@ class Api:
                 id_mapping=id_mapping,
                 name=source_name,
                 description=source_json.get("description", ""),
+                identifiers=self.spec["identifiers"],
             )
 
     def _parse_identifier_map(self, map_json, data_type=None, data_name=None):
@@ -519,6 +520,7 @@ class Api:
                     values=constants,
                     by=expected_data.get("by", []),
                     compare_via=expected_data.get("compare_via", None),
+                    identifiers=self.spec["identifiers"],
                 )
             )
         return expectations
