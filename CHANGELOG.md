@@ -1,5 +1,9 @@
 # dtspec Changelog
 
+## 0.6.0
+
+* Identifiers can now be embedded in both source and expectations.
+
 ## 0.5.0
 
 * Null identifiers can now be in targets, as long as one column can be used to identify
