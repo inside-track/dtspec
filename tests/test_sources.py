@@ -518,3 +518,37 @@ def test_embedded_identifiers_are_translated(identifiers, cases):
         )
     )
     assert_frame_equal(actual, expected)
+
+
+def test_multiple_embedded_identifiers_are_translated(identifiers, cases):
+    source = Source(
+        id_mapping={"id": {"identifier": identifiers["student"], "attribute": "id"}},
+        identifiers=identifiers,
+    )
+
+    source.stack(
+        cases[0],
+        markdown_to_df(
+            """
+        | id | prefixed_id                            | first_name |
+        | -  | -                                      | -          |
+        | s1 | {organization.id[o1]}-{student.id[s1]} | Bob        |
+        | s2 | {organization.id[o1]}-{student.id[s2]} | Nancy      |
+        """
+        ),
+    )
+
+    actual = source.data
+    expected = markdown_to_df(
+        """
+        | id   | prefixed_id | first_name |
+        | -    | -           | -          |
+        | {s1} | {o1}-{s1}   | Bob        |
+        | {s2} | {o1}-{s2}   | Nancy      |
+        """.format(
+            s1=identifiers["student"].generate(case=cases[0], named_id="s1")["id"],
+            s2=identifiers["student"].generate(case=cases[0], named_id="s2")["id"],
+            o1=identifiers["organization"].generate(case=cases[0], named_id="o1")["id"],
+        )
+    )
+    assert_frame_equal(actual, expected)
