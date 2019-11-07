@@ -81,20 +81,23 @@ def translate_embedded_identifiers(df, case, identifiers, identifier_regex=None)
         if not isinstance(v, str):
             return v
 
-        re_match = identifier_regex.search(v)
+        re_match = identifier_regex.finditer(v)
         if not re_match:
             return v
 
-        try:
-            translated_id = identifiers[re_match["identifier"]].generate(
-                case=case, named_id=re_match["named_id"]
-            )[re_match["attribute"]]
-        except KeyError as _err:
-            raise UnableToFindNamedIdError(
-                f"Error finding embedded named identifier in case {case.name}: "
-                + f"failed finding identifier named '{re_match['identifier']}' with attribute '{re_match['attribute']}'"
-            )
-        return identifier_regex.sub(translated_id, v)
+        for imatch in re_match:
+            try:
+                translated_id = identifiers[imatch["identifier"]].generate(
+                    case=case, named_id=imatch["named_id"]
+                )[imatch["attribute"]]
+            except KeyError as _err:
+                raise UnableToFindNamedIdError(
+                    f"Error finding embedded named identifier in case {case.name}: "
+                    + f"failed finding identifier named '{imatch['identifier']}' with attribute '{imatch['attribute']}'"
+                )
+            v = identifier_regex.sub(translated_id, v, count=1)
+
+        return v
 
     return df.applymap(translate_id)
 
