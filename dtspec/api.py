@@ -1,3 +1,4 @@
+import networkx
 import jsonschema
 from colorama import Fore, Style
 
@@ -153,7 +154,7 @@ SCHEMA = {
             "uniqueItems": True,
             "items": {
                 "type": "object",
-                "required": ["factory", "data"],
+                "required": ["factory"],
                 "additionalProperties": False,
                 "properties": {
                     "factory": {"type": "string"},
@@ -384,13 +385,32 @@ class Api:
                 description=target_json.get("description", ""),
             )
 
+    @staticmethod
+    def _sort_factories(factories):
+        graph = networkx.DiGraph()
+        for factory in factories:
+            graph.add_node(factory["factory"])
+            if "parents" not in factory:
+                continue
+            for parent in factory["parents"]:
+                graph.add_edge(parent, factory["factory"])
+
+        sorted_factory_names = [node for node in networkx.topological_sort(graph)]
+        return sorted(
+            factories,
+            key=lambda factory: sorted_factory_names.index(factory["factory"]),
+        )
+
     def _parse_spec_factories(self, json_spec):
         self.spec["factories"] = {}
-        for factory_json in json_spec.get("factories", []):
+
+        for factory_json in self._sort_factories(json_spec.get("factories", [])):
             factory_name = factory_json["factory"]
-            factory_data = self._parse_spec_factory_data(
-                factory_json["data"], factory_name
-            )
+            factory_data = []
+            if "data" in factory_json:
+                factory_data = self._parse_spec_factory_data(
+                    factory_json["data"], factory_name
+                )
 
             if factory_name in self.spec["factories"].keys():
                 raise ApiDuplicateError(f"Duplicate factories detected: {factory_name}")

@@ -32,6 +32,23 @@ targets:
           attribute: external_id
 
 
+factories:
+  # DummyA/DummyB demonstrates that factories don't have to come in order
+  - factory: DummyB
+    parents:
+      - DummyA
+
+  - factory: DummyA
+    data:
+      - source: raw_students
+        table: |
+          | id   | external_id | first_name |
+          | -    | -           | -          |
+          | stu1 | stu1        | Buffy      |
+          | stu2 | stu2        | {NULL}     |
+
+
+
 scenarios:
   - scenario: FunWithNulls
     description: Demonstrates how to deal with nulls, in both standard columns and identifier columns
