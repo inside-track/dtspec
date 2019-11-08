@@ -1,6 +1,7 @@
 pandas
 jsonschema
 colorama
+networkx
 
 # development only
 pytest

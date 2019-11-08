@@ -86,7 +86,8 @@ setup(
     install_requires=[
         'pandas>=0.23',
         'jsonschema>=3',
-        'colorama'
+        'colorama',
+        'networkx'
     ],
 
     python_requires='>=3',
