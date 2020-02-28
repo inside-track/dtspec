@@ -247,6 +247,11 @@ class Api:
         for _scenario_name, scenario in self.spec["scenarios"].items():
             scenario.generate()
 
+    def generate_sources(self, scenario_name):
+        "Used to generate all source data that will be passed back to the user"
+        scenario = self.spec["scenarios"][scenario_name]
+            scenario.generate()
+
     def source_data(self):
         return {
             name: source.serialize() for name, source in self.spec["sources"].items()
@@ -290,19 +295,31 @@ class Api:
         "Runs all of the assertions defined in the spec against the actual data"
         has_error = False
 
-        for _, scenario in self.spec["scenarios"].items():
-            for _, case in scenario.cases.items():
-                print(f"Asserting {case.name}", end=" ")
-                try:
-                    case.assert_expectations()
-                    print(Fore.GREEN + "PASSED" + Style.RESET_ALL)
-                except AssertionError as err:
-                    print(Fore.RED + "FAILED")
-                    print(err)
-                    print(Style.RESET_ALL)
-                    has_error = True
+        for scenario_name in self.spec["scenarios"].keys():
+            try:
+                scenario_test_result = assert_expectations(scenario_name)
+            except AssertionError:
+                has_error = True
         if has_error:
             raise AssertionError("There were dtspec assertion errors, please see log")
+
+    def assert_expectations(self, scenario_name):
+        "Runs all of the assertions defined in the spec against the actual data"
+        has_error = False
+
+        scenario=  self.spec["scenarios"][scenario_name]
+        for _, case in scenario.cases.items():
+            print(f"Asserting {case.name}", end=" ")
+            try:
+                case.assert_expectations()
+                print(Fore.GREEN + "PASSED" + Style.RESET_ALL)
+            except AssertionError as err:
+                print(Fore.RED + "FAILED")
+                print(err)
+                print(Style.RESET_ALL)
+                has_error = True
+        if has_error:
+            raise AssertionError("There were dtspec assertion errors in scenario {scenario_name}, please see log".format(scenario_name=scenario_name))
 
     def _parse_spec_identifiers(self, json_spec):
         self.spec["identifiers"] = {}
