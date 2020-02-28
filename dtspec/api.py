@@ -245,7 +245,7 @@ class Api:
     def generate_sources(self):
         "Used to generate all source data that will be passed back to the user"
         for _scenario_name in self.spec["scenarios"].keys():
-            generate_sources(_scenario_name)
+            self.generate_sources(_scenario_name)
 
     def generate_sources(self, scenario_name):
         "Used to generate source data of a single scenario that will be passed back to the user"
