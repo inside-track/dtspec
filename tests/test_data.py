@@ -1,5 +1,5 @@
 import pandas as pd
-from pandas.util.testing import assert_frame_equal
+from pandas.testing import assert_frame_equal
 
 from dtspec.core import markdown_to_df
 

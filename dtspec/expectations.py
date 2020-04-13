@@ -1,4 +1,4 @@
-import pandas.util.testing
+import pandas.testing
 
 from dtspec.core import (
     markdown_to_df,
@@ -9,7 +9,7 @@ from dtspec.core import (
 
 def assert_frame_equal(actual, expected, **kwargs):
     try:
-        pandas.util.testing.assert_frame_equal(actual, expected, **kwargs)
+        pandas.testing.assert_frame_equal(actual, expected, **kwargs)
     except AssertionError as err:
         msg = str(err)
         msg += "\nActual:\n{}".format(actual)
