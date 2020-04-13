@@ -481,7 +481,7 @@ Create an appropriate python environment.  I like [miniconda](https://conda.io/m
 but use whatever you like:
 
     conda create --name dtspec python=3.6
-    source activate dtspec
+    conda activate dtspec
 
 Then install pip packages
 

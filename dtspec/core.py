@@ -8,7 +8,7 @@ import copy
 from types import SimpleNamespace
 
 import pandas as pd
-from pandas.util.testing import assert_frame_equal
+from pandas.testing import assert_frame_equal
 
 pd.set_option("display.max_columns", 50)
 pd.set_option("display.width", 200)
@@ -370,7 +370,7 @@ class Target:
 
     def _lookup_case(self):
         if len(self.data) == 0:
-            self.data["__dtspec_case__"] = pd.Series()
+            self.data["__dtspec_case__"] = pd.Series(dtype="object")
             return
 
         if len(self.id_mapping) == 0:
