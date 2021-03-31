@@ -395,7 +395,7 @@ class Api:
             for parent in factory["parents"]:
                 graph.add_edge(parent, factory["factory"])
 
-        sorted_factory_names = [node for node in networkx.topological_sort(graph)]
+        sorted_factory_names = list(networkx.topological_sort(graph))
         return sorted(
             factories,
             key=lambda factory: sorted_factory_names.index(factory["factory"]),

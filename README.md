@@ -480,7 +480,7 @@ We welcome contributors!  Please submit any suggests or pull requests in Github.
 Create an appropriate python environment.  I like [miniconda](https://conda.io/miniconda.html),
 but use whatever you like:
 
-    conda create --name dtspec python=3.6
+    conda create --name dtspec python=3.8
     conda activate dtspec
 
 Then install pip packages
