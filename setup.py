@@ -90,6 +90,7 @@ setup(
         'networkx',
         'jinja2',
         'sqlalchemy',
+        'nest_asyncio',
     ],
 
     python_requires='>=3',
