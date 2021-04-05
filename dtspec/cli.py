@@ -1,6 +1,7 @@
 import os
 import json
 import argparse
+import pathlib
 
 import yaml
 import jinja2
@@ -10,9 +11,10 @@ import dtspec.schemas
 from dtspec.log import LOG
 
 # TODO: Document environment variable
-DTSPEC_CONFIG_PATH=os.path.join(os.getcwd(), 'dtspec/config.yml')
-if 'DTSPEC_CONFIG_PATH' in os.environ:
-    DTSPEC_CONFIG_PATH=os.environ['DTSPEC_CONFIG_PATH']
+
+DTSPEC_ROOT=os.path.join(os.getcwd(), 'dtspec')
+if 'DTSPEC_ROOT' in os.environ:
+    DTSPEC_ROOT=os.environ['DTSPEC_ROOT']
 
 PARSER = argparse.ArgumentParser(description='dtspec cli')
 PARSER.add_argument('--env', dest='env', default='default')
@@ -20,9 +22,9 @@ PARSER.add_argument('--fetch-schemas', dest='fetch_schemas', const=True, nargs='
 
 
 def get_config():
-    template_loader = jinja2.FileSystemLoader(searchpath=os.path.dirname(DTSPEC_CONFIG_PATH))
+    template_loader = jinja2.FileSystemLoader(searchpath=DTSPEC_ROOT)
     template_env = jinja2.Environment(loader=template_loader)
-    template = template_env.get_template(os.path.split(DTSPEC_CONFIG_PATH)[1])
+    template = template_env.get_template('config.yml')
     rendered_template = template.render(
         env_var=lambda var, default='': os.environ.get(var, default)
     )
@@ -39,11 +41,8 @@ def main():
         return
 
 
-def fetch_schemas(config, env):
-    LOG.info('fetching schemas for env: %s', env)
-
-    schema_config = config['environments'][env]['schema']
-    engine = dtspec.schemas.generate_engine(
+def _engine_from_config(schema_config):
+    return dtspec.schemas.generate_engine(
         engine_type=schema_config['type'],
         host=schema_config['host'],
         port=schema_config.get('port'),
@@ -54,5 +53,24 @@ def fetch_schemas(config, env):
         role=schema_config.get('role'),
     )
 
+
+def fetch_schemas(config, env):
+    LOG.info('fetching schemas for env: %s', env)
+
+    schema_config = config['environments'][env]['schema']
+    engine = _engine_from_config(schema_config)
+
+    output_path = os.path.join(DTSPEC_ROOT, 'schemas')
+    pathlib.Path(output_path).mkdir(parents=True, exist_ok=True)
+
     for namespace, tables in schema_config['tables'].items():
-        dtspec.schemas.reflect(engine, namespace, tables)
+        dtspec.schemas.reflect(
+            env=env,
+            engine=engine,
+            output_path=output_path,
+            namespace=namespace,
+            tables=tables,
+        )
+
+def init_test_db(config, env):
+    LOG.info('initializing test db env: %s', env)
