@@ -19,6 +19,8 @@ if 'DTSPEC_ROOT' in os.environ:
 PARSER = argparse.ArgumentParser(description='dtspec cli')
 PARSER.add_argument('--env', dest='env', default='default')
 PARSER.add_argument('--fetch-schemas', dest='fetch_schemas', const=True, nargs='?', default=False)
+PARSER.add_argument('--init-test-db', dest='init_test_db', const=True, nargs='?', default=False)
+PARSER.add_argument('--clean', dest='clean', const=True, nargs='?', default=False)
 
 
 def get_config():
@@ -38,6 +40,10 @@ def main():
 
     if args.fetch_schemas:
         fetch_schemas(config, args.env)
+        return
+
+    if args.init_test_db:
+        init_test_db(config, args.env, args.clean)
         return
 
 
@@ -72,5 +78,15 @@ def fetch_schemas(config, env):
             tables=tables,
         )
 
-def init_test_db(config, env):
+def init_test_db(config, env, clean=False):
     LOG.info('initializing test db env: %s', env)
+    schema_config = config['environments'][env]['test']
+    engine = _engine_from_config(schema_config)
+    schemas_path = os.path.join(DTSPEC_ROOT, 'schemas')
+
+    dtspec.schemas.init_test_db(
+        env=env,
+        engine=engine,
+        schema_path=schemas_path,
+        clean=clean
+    )

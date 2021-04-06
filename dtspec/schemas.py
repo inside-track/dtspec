@@ -1,4 +1,6 @@
 import os
+import glob
+import re
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
@@ -30,6 +32,44 @@ def generate_engine(engine_type, host, port=None, user=None, password=None, dbna
             )
         )
     raise UnknownEngineTypeError(f'Unsupported engine type: {engine_type}')
+
+def execute_sqls(engine, sqls, max_workers=4):
+    '''
+    Used to run a list of sql commands distributed over a number of threads.
+    This method splits sql into a number of batches (max_workers) and executes
+    SQL for each batch inside of a single database transaction.
+    There is no guarantee that the SQL will run in any specific order.
+
+    Args:
+      engine - SQLAlchemy engine
+      sql - List of sql statements to run
+      max_workers - Maximum number of parallel threads to run
+    '''
+
+    async def async_execute_sqls(worker_execute_sqls, engine, sqls, max_workers=max_workers):
+        worker_batch_sqls = [sqls[iworker::max_workers] for iworker in range(max_workers)]
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            event_loop = asyncio.get_event_loop()
+            tasks = [
+                event_loop.run_in_executor(executor, worker_execute_sqls, engine, worker_sqls)
+                for worker_sqls in worker_batch_sqls
+            ]
+
+            for task in tasks:
+                await asyncio.gather(task)
+
+    def worker_execute_sqls(engine, worker_sqls):
+        with engine.connect().begin() as trans:
+            for worker_sql in worker_sqls:
+                LOG.debug('Executing sql: %s', worker_sql)
+                trans.connection.execute(worker_sql)
+            trans.commit()
+
+    nest_asyncio.apply()
+    asyncio.get_event_loop().run_until_complete(
+        async_execute_sqls(worker_execute_sqls, engine, sqls)
+    )
 
 
 def reflect(env, engine, output_path, namespace='public', tables=None):
@@ -115,3 +155,68 @@ def _write_yaml(output_path, env, namespace, metadata):
               + '\n'
           )
           yfile.write(schema_yaml)
+
+def _read_yaml(env, schema_path):
+    schema_yaml = {}
+    for yaml_file in glob.glob(os.path.join(schema_path, f'{env}.*.schema.yml')):
+        LOG.info('Parsing schema defined in %s', yaml_file)
+        namespace = re.search(fr'{env}.(.+).schema.yml', yaml_file).group(1)
+        with open(yaml_file, 'r') as yfile:
+            yaml_txt = yfile.read()
+        schema_yaml[namespace] = yaml.unsafe_load(yaml_txt)
+
+    return schema_yaml
+
+def _reconstruct_sa_metadata(schema):
+    metadata = sa.MetaData()
+
+    return {
+        namespace: {
+            table_name: sa.Table(
+                table_name,
+                metadata,
+                *[
+                    sa.Column(
+                        col['name'],
+                        col['type'],
+                        primary_key=col['primary_key'],
+                        nullable=col['nullable'],
+                        default=col['default'],
+                    )
+                    for col in columns
+                ],
+                schema=namespace
+            )
+            for table_name, columns in tables.items()
+        }
+        for namespace, tables in schema.items()
+    }
+
+def _create_table_sql(table, engine):
+    return str(sa.schema.CreateTable(table).compile(engine)) + ';'
+
+def _create_namespace_sql(namespace, clean=False):
+    sql = ''
+    if clean:
+        sql += f'DROP SCHEMA IF EXISTS {namespace} CASCADE; '
+    sql += f'CREATE SCHEMA {namespace}; '
+    return sql
+
+def init_test_db(env, engine, schema_path, clean=False):
+    schema_yaml = _read_yaml(env, schema_path)
+    schema_metadata = _reconstruct_sa_metadata(schema_yaml)
+
+
+    create_schema_sqls = [
+        _create_namespace_sql(namespace, clean=clean)
+        for namespace in schema_metadata.keys()
+    ]
+
+    create_table_sqls = [
+        _create_table_sql(table, engine)
+        for namespace, tables in schema_metadata.items()
+        for table_name, table in tables.items()
+    ]
+
+    execute_sqls(engine, create_schema_sqls)
+    execute_sqls(engine, create_table_sqls)
