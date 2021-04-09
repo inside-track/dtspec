@@ -7,21 +7,42 @@ import yaml
 import jinja2
 import dtspec
 
-import dtspec.schemas
+import dtspec.db
+import dtspec.specs
 from dtspec.log import LOG
 
+# TODOC: specs must all live in a specs subdirectory
 # TODO: Document environment variable
 
 DTSPEC_ROOT=os.path.join(os.getcwd(), 'dtspec')
 if 'DTSPEC_ROOT' in os.environ:
     DTSPEC_ROOT=os.environ['DTSPEC_ROOT']
 
-PARSER = argparse.ArgumentParser(description='dtspec cli')
-PARSER.add_argument('--env', dest='env', default='default')
-PARSER.add_argument('--fetch-schemas', dest='fetch_schemas', const=True, nargs='?', default=False)
-PARSER.add_argument('--init-test-db', dest='init_test_db', const=True, nargs='?', default=False)
-PARSER.add_argument('--clean', dest='clean', const=True, nargs='?', default=False)
+class NothingToDoError(Exception): pass
 
+def parse_args():
+    parser = argparse.ArgumentParser(description='dtspec cli')
+    parser.add_argument('--env', dest='env', default=None)
+
+    subparsers = parser.add_subparsers(help='dtspec subcommand')
+
+    db_parser = subparsers.add_parser('db', help='db and schema operations')
+    db_parser.set_defaults(subcommand='db')
+    db_parser.add_argument('--fetch-schemas', dest='fetch_schemas', const=True, nargs='?', default=False)
+    db_parser.add_argument('--init-test-db', dest='init_test_db', const=True, nargs='?', default=False)
+    db_parser.add_argument('--clean', dest='clean', const=True, nargs='?', default=False)
+
+    dbt_parser = subparsers.add_parser('test-dbt', help='run dtspec tests for dbt')
+    dbt_parser.set_defaults(subcommand='test-dbt')
+    dbt_parser.add_argument('--compile-only', dest='compile_only', const=True, nargs='?', default=False)
+    dbt_parser.add_argument('--models', dest='models', default=None)
+    dbt_parser.add_argument('--skip-seed', dest='skip_seed', const=True, nargs='?', default=False)
+    dbt_parser.add_argument('--partial-parse', dest='partial_parse', const=True, nargs='?', default=False)
+
+    dbt_parser.add_argument('--scenarios', dest='scenarios', default=None)
+    dbt_parser.add_argument('--cases', dest='cases', default=None)
+
+    return parser.parse_args()
 
 def get_config():
     template_loader = jinja2.FileSystemLoader(searchpath=DTSPEC_ROOT)
@@ -35,9 +56,18 @@ def get_config():
     return config
 
 def main():
-    args = PARSER.parse_args()
+    args = parse_args()
     config = get_config()
 
+    if args.subcommand == 'db':
+        return main_db(args, config)
+
+    if args.subcommand == 'test-dbt':
+        return main_test_dbt(args, config)
+
+    raise NothingToDoError
+
+def main_db(args, config):
     if args.fetch_schemas:
         fetch_schemas(config, args.env)
         return
@@ -46,9 +76,28 @@ def main():
         init_test_db(config, args.env, args.clean)
         return
 
+    raise NothingToDoError
+
+def main_test_dbt(args, config):
+    compiled_specs = compile_dtspec(scenario_selector=args.scenarios, case_selector=args.cases)
+    if args.compile_only:
+        return
+
+    api = dtspec.api.Api(compiled_specs)
+
+    schema_config = config['environments'][env]['test']
+    engine = _engine_from_config(schema_config)
+
+    dtspec.db.clean_test_data(engine, api)
+
+
+    raise NothingToDoError
+
+
+
 
 def _engine_from_config(schema_config):
-    return dtspec.schemas.generate_engine(
+    return dtspec.db.generate_engine(
         engine_type=schema_config['type'],
         host=schema_config['host'],
         port=schema_config.get('port'),
@@ -60,17 +109,17 @@ def _engine_from_config(schema_config):
     )
 
 
-def fetch_schemas(config, env):
+def _fetch_schema(config, env):
     LOG.info('fetching schemas for env: %s', env)
 
-    schema_config = config['environments'][env]['schema']
-    engine = _engine_from_config(schema_config)
+    env_config = config['db_environments'][env]
+    engine = _engine_from_config(env_config['schema'])
 
     output_path = os.path.join(DTSPEC_ROOT, 'schemas')
     pathlib.Path(output_path).mkdir(parents=True, exist_ok=True)
 
-    for namespace, tables in schema_config['tables'].items():
-        dtspec.schemas.reflect(
+    for namespace, tables in env_config['tables'].items():
+        dtspec.db.reflect(
             env=env,
             engine=engine,
             output_path=output_path,
@@ -78,15 +127,43 @@ def fetch_schemas(config, env):
             tables=tables,
         )
 
-def init_test_db(config, env, clean=False):
+def fetch_schemas(config, env=None):
+    envs = [env] if env else list(config['db_environments'].keys())
+    for env in envs:
+        _fetch_schema(config, env)
+
+
+def _init_test_db(config, env=None, clean=False):
     LOG.info('initializing test db env: %s', env)
-    schema_config = config['environments'][env]['test']
-    engine = _engine_from_config(schema_config)
+    env_config = config['db_environments'][env]
+    engine = _engine_from_config(env_config['test'])
     schemas_path = os.path.join(DTSPEC_ROOT, 'schemas')
 
-    dtspec.schemas.init_test_db(
+    dtspec.db.init_test_db(
         env=env,
         engine=engine,
         schema_path=schemas_path,
         clean=clean
     )
+
+def init_test_db(config, env=None, clean=False):
+    envs = [env] if env else list(config['db_environments'].keys())
+    for env in envs:
+        _init_test_db(config, env, clean=clean)
+
+
+
+# TODO: a dtspec init command that sets up a blank/example specs/main.yml file
+# TODO: Compile dbt refs
+# Also, need to deal with the fact that there could be multiple source scheams (PROD_RAW/PROD_SNAPSHOTS)
+
+def compile_dtspec(scenario_selector=None, case_selector=None):
+    search_path = os.path.join(DTSPEC_ROOT, 'specs')
+    compiled_spec = dtspec.specs.compile_spec(search_path, scenario_selector=scenario_selector, case_selector=case_selector)
+
+    with open(os.path.join(DTSPEC_ROOT, 'compiled_specs.yml'), 'w') as compiled_file:
+        compiled_file.write(
+            yaml.dump(compiled_spec, default_flow_style=False)
+        )
+
+    return compiled_spec
