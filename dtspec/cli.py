@@ -119,7 +119,11 @@ def main_test_dbt(args, config):
         partial_parse=True, # The compile step above already parsed dbt
     )
 
-#    raise NothingToDoError
+    api.load_actuals(
+        _get_actuals(config, api, target=args.target)
+    )
+    api.assert_expectations()
+
 
 def _clean_target_test_data(config, api, target):
     target_config = config['target_environments'][target]
@@ -134,6 +138,11 @@ def _load_test_data(source_engines, api):
         schemas_path=SCHEMAS_PATH,
     )
 
+def _get_actuals(config, api, target):
+    target_config = config['target_environments'][target]
+    engine = _engine_from_config(target_config)
+    LOG.info(f'Fetching results of run from target test environment {target}')
+    return dtspec.db.get_actuals(engine, api)
 
 
 

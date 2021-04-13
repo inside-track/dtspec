@@ -269,7 +269,6 @@ def load_test_data(source_engines, api, schemas_path):
     insert_by_env_sqls = {env: [] for env in source_engines.keys()}
     for source_name, data in api.spec['sources'].items():
         this_source_meta = source_sa_metadata[source_name]
-        print(f'{source_name}: {this_source_meta}')
         source_insert = this_source_meta['sa_table'].insert(
             bind=this_source_meta['engine']
         ).values(data.serialize())
@@ -291,3 +290,27 @@ def load_test_data(source_engines, api, schemas_path):
             engine=source_engine,
             sqls=insert_by_env_sqls[env]
         )
+
+def _stringify_sa_value(val):
+    if val is None:
+        return '{NULL}'
+    if val is True:
+        return '{True}'
+    if val is False:
+        return '{False}'
+    return str(val)
+
+def get_actuals(engine, api):
+    serialized_actuals = {}
+    with engine.connect() as conn:
+        for target in api.spec['targets'].keys():
+            LOG.info(f'Fetching actual data for target {target}')
+            sa_results = conn.execute(f'SELECT * FROM {target}').fetchall()
+            serialized_actuals[target] = {
+                'records': [
+                    { key: _stringify_sa_value(val) for key, val in row.items() }
+                    for row in sa_results
+                ],
+                'columnns': list(sa_results[0].keys())
+            }
+    return serialized_actuals
