@@ -156,41 +156,46 @@ def _write_yaml(output_path, env, namespace, metadata):
           )
           yfile.write(schema_yaml)
 
-def _read_yaml(env, schema_path):
-    schema_yaml = {}
-    for yaml_file in glob.glob(os.path.join(schema_path, f'{env}.*.schema.yml')):
-        LOG.info('Parsing schema defined in %s', yaml_file)
-        namespace = re.search(fr'{env}.(.+).schema.yml', yaml_file).group(1)
+
+def read_sa_metadata(schema_path):
+    metadata = sa.MetaData()
+    schemas = {}
+    for yaml_file in glob.glob(os.path.join(schema_path, f'*.schema.yml')):
+        yaml_basename = os.path.basename(yaml_file)
+
+        parsed_filename = re.search(fr'([^.]+).([^.]+).schema.yml', yaml_basename)
+        env = parsed_filename.group(1)
+        namespace = parsed_filename.group(2)
+        schemas[env] = schemas.get(env, {})
+
         with open(yaml_file, 'r') as yfile:
             yaml_txt = yfile.read()
-        schema_yaml[namespace] = yaml.unsafe_load(yaml_txt)
 
-    return schema_yaml
+        schema_def = yaml.unsafe_load(yaml_txt)
 
-def _reconstruct_sa_metadata(schema):
-    metadata = sa.MetaData()
-
-    return {
-        namespace: {
-            table_name: sa.Table(
-                table_name,
-                metadata,
-                *[
-                    sa.Column(
-                        col['name'],
-                        col['type'],
-                        primary_key=col['primary_key'],
-                        nullable=col['nullable'],
-                        default=col['default'],
-                    )
-                    for col in columns
-                ],
-                schema=namespace
-            )
-            for table_name, columns in tables.items()
+        schemas[env][namespace] = {
+            table_name: _sa_table_from_yaml(metadata, namespace, table_name, table_def)
+            for table_name, table_def in schema_def.items()
         }
-        for namespace, tables in schema.items()
-    }
+    return schemas
+
+
+def _sa_table_from_yaml(metadata, namespace, table_name, table_def):
+    return sa.Table(
+        table_name,
+        metadata,
+        *[
+            sa.Column(
+                col['name'],
+                col['type'],
+                primary_key=col['primary_key'],
+                nullable=col['nullable'],
+                default=col['default'],
+            )
+            for col in table_def
+        ],
+        schema=namespace
+    )
 
 def _create_table_sql(table, engine):
     return str(sa.schema.CreateTable(table).compile(engine)) + ';'
@@ -202,9 +207,8 @@ def _create_namespace_sql(namespace, clean=False):
     sql += f'CREATE SCHEMA {namespace}; '
     return sql
 
-def init_test_db(env, engine, schema_path, clean=False):
-    schema_yaml = _read_yaml(env, schema_path)
-    schema_metadata = _reconstruct_sa_metadata(schema_yaml)
+def init_test_db(env, engine, schemas_path, clean=False):
+    schema_metadata = read_sa_metadata(schemas_path)[env]
 
 
     create_schema_sqls = [
@@ -220,3 +224,70 @@ def init_test_db(env, engine, schema_path, clean=False):
 
     execute_sqls(engine, create_schema_sqls)
     execute_sqls(engine, create_table_sqls)
+
+def clean_target_test_data(engine, api):
+    execute_sqls(
+        engine,
+        [f"DROP TABLE IF EXISTS {target}" for target in api.spec['targets'].keys()]
+    )
+
+def serialize(data):
+    serialized_data = []
+    for row in data:
+        serialized_row = {}
+        for k, v in row.items():
+            if v == '{True}':
+                serialized_row[k] = 'True'
+            elif v == '{False}':
+                serialized_row[k] = 'False'
+            else:
+                serialized_row[k] = v
+
+            # if k in app.lib.sql.SNOWFLAKE_KEYWORDS:
+            #     serialized_row[case_keyword(k)] = serialized_row.pop(k)
+
+        serialized_data.append(serialized_row)
+
+    return serialized_data
+
+
+def load_test_data(source_engines, api, schemas_path):
+    schema_metadata = read_sa_metadata(schemas_path)
+    source_sa_metadata = {}
+    for env_key, env_val in schema_metadata.items():
+        for namespace_key, tables in env_val.items():
+            for table_name, table_sa_metadata in tables.items():
+                db_name = source_engines[env_key].url.database
+                source_fqn = f'{db_name}.{namespace_key}.{table_name}'
+                source_sa_metadata[source_fqn] = {
+                    'env': env_key,
+                    'engine': source_engines[env_key],
+                    'sa_table': table_sa_metadata,
+                }
+
+    truncate_by_env_sqls = {env: [] for env in source_engines.keys()}
+    insert_by_env_sqls = {env: [] for env in source_engines.keys()}
+    for source_name, data in api.spec['sources'].items():
+        this_source_meta = source_sa_metadata[source_name]
+        print(f'{source_name}: {this_source_meta}')
+        source_insert = this_source_meta['sa_table'].insert(
+            bind=this_source_meta['engine']
+        ).values(data.serialize())
+
+        truncate_by_env_sqls[this_source_meta['env']].append(
+            f"TRUNCATE {source_name}; "
+        )
+
+        insert_by_env_sqls[this_source_meta['env']].append(source_insert)
+
+    for env, source_engine in source_engines.items():
+        LOG.info(f'Loading test data into source test environment {env}')
+        execute_sqls(
+            engine=source_engine,
+            sqls=truncate_by_env_sqls[env]
+        )
+
+        execute_sqls(
+            engine=source_engine,
+            sqls=insert_by_env_sqls[env]
+        )

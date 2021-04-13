@@ -19,6 +19,7 @@ from dtspec.log import LOG
 DTSPEC_ROOT=os.path.join(os.getcwd(), 'dtspec')
 if 'DTSPEC_ROOT' in os.environ:
     DTSPEC_ROOT=os.environ['DTSPEC_ROOT']
+SCHEMAS_PATH = os.path.join(DTSPEC_ROOT, 'schemas')
 
 class NothingToDoError(Exception): pass
 
@@ -40,6 +41,7 @@ def parse_args():
     dbt_parser.add_argument('--models', dest='models', default=None)
     dbt_parser.add_argument('--skip-seed', dest='skip_seed', const=True, nargs='?', default=False)
     dbt_parser.add_argument('--partial-parse', dest='partial_parse', const=True, nargs='?', default=False)
+    dbt_parser.add_argument('--target', dest='target', default='dtspec')
 
     dbt_parser.add_argument('--scenarios', dest='scenarios', default=None)
     dbt_parser.add_argument('--cases', dest='cases', default=None)
@@ -82,9 +84,9 @@ def main_db(args, config):
 
 def main_test_dbt(args, config):
     if not args.partial_parse:
-        dtspec.shell.run_dbt('compile', target='test')
+        dtspec.shell.run_dbt('compile', target=args.target)
 
-    # Assumes were running this in the dbt directory
+    # TODOC: Assumes we're running this in the dbt directory
     with open('target/manifest.json') as mfile:
         dbt_manifest = json.loads(mfile.read())
     manifest = dtspec.specs.compile_dbt_manifest(dbt_manifest)
@@ -93,18 +95,31 @@ def main_test_dbt(args, config):
     if args.compile_only:
         return
 
-    # api = dtspec.api.Api(compiled_specs)
-    # _clean_test_data(config, api)
+    api = dtspec.api.Api(compiled_specs)
+    api.generate_sources()
 
-    raise NothingToDoError
+    source_engines = {
+        env: _engine_from_config(env_val['test'])
+        for env, env_val in config['source_environments'].items()
+    }
 
-def _clean_test_data(config, api):
-    envs = list(config['source_environments'].keys())
-    for env in envs:
-        schema_config = config['source_environments'][env]['test']
-        engine = _engine_from_config(schema_config)
+    _clean_target_test_data(config, api, target=args.target)
+    _load_test_data(source_engines, api)
 
-        dtspec.db.clean_test_data(engine, api)
+#    raise NothingToDoError
+
+def _clean_target_test_data(config, api, target):
+    target_config = config['target_environments'][target]
+    engine = _engine_from_config(target_config)
+    LOG.info(f'Cleaning out target test data for target test environment {target}')
+    dtspec.db.clean_target_test_data(engine, api)
+
+def _load_test_data(source_engines, api):
+    dtspec.db.load_test_data(
+        source_engines=source_engines,
+        api=api,
+        schemas_path=SCHEMAS_PATH,
+    )
 
 
 
@@ -150,12 +165,11 @@ def _init_test_db(config, env=None, clean=False):
     LOG.info('initializing test db env: %s', env)
     env_config = config['source_environments'][env]
     engine = _engine_from_config(env_config['test'])
-    schemas_path = os.path.join(DTSPEC_ROOT, 'schemas')
 
     dtspec.db.init_test_db(
         env=env,
         engine=engine,
-        schema_path=schemas_path,
+        schemas_path=SCHEMAS_PATH,
         clean=clean
     )
 

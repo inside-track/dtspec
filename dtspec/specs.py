@@ -92,7 +92,7 @@ def _render_template(template_env, yaml_file, manifest=None):
         dbt_source=lambda source_name, name: dbt_source(manifest, source_name, name),
         dbt_ref=lambda name: dbt_ref(manifest, name),
     )
-    LOG.debug('Rendering %s:\n%s', yaml_file, rendered_template)
+#    LOG.debug('Rendering %s:\n%s', yaml_file, rendered_template)
     return yaml.safe_load(rendered_template)
 
 def compile_dbt_manifest(dbt_manifest):
