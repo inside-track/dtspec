@@ -98,13 +98,26 @@ def main_test_dbt(args, config):
     api = dtspec.api.Api(compiled_specs)
     api.generate_sources()
 
+    if not args.skip_seed:
+        dtspec.shell.run_dbt(
+            'seed',
+            target=args.target,
+        )
+
     source_engines = {
         env: _engine_from_config(env_val['test'])
         for env, env_val in config['source_environments'].items()
     }
-
     _clean_target_test_data(config, api, target=args.target)
     _load_test_data(source_engines, api)
+
+    dtspec.shell.run_dbt(
+        'run',
+        target=args.target,
+        models=args.models,
+        full_refresh=True, # Not yet supporting tests for incremental loads
+        partial_parse=True, # The compile step above already parsed dbt
+    )
 
 #    raise NothingToDoError
 
