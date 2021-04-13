@@ -4,12 +4,13 @@ import shlex
 
 from dtspec.log import LOG
 
+
 class RunCommandError(Exception):
     pass
 
 
 def run_command(command, env=None):
-    'Runs a shell command and streams output to the log'
+    "Runs a shell command and streams output to the log"
 
     env = env or {}
 
@@ -20,7 +21,7 @@ def run_command(command, env=None):
         stderr=subprocess.STDOUT,
     ) as proc:
         while True:
-            output = proc.stdout.readline().decode('utf-8')
+            output = proc.stdout.readline().decode("utf-8")
             if len(output) == 0 and proc.poll() is not None:
                 break
             if output:
@@ -28,7 +29,9 @@ def run_command(command, env=None):
 
         return_code = proc.poll()
     if return_code != 0:
-        raise RunCommandError('Error running shell command, please see log for details.')
+        raise RunCommandError(
+            "Error running shell command, please see log for details."
+        )
 
 
 class DbtRunError(Exception):
@@ -36,18 +39,20 @@ class DbtRunError(Exception):
 
 
 def run_dbt(
-    cmd='run',
+    cmd="run",
     project_dir=None,
-    target='dev',
+    target="dev",
     models=None,
     exclude=None,
     full_refresh=False,
     env=None,
     partial_parse=False,
 ):
-    'Construct common dbt parameters and runs dbt in a shell'
+    "Construct common dbt parameters and runs dbt in a shell"
 
-    project_dir = project_dir or os.environ.get('DBT_PROFILES_DIR', '~/.dbt/profiles.yml')
+    project_dir = project_dir or os.environ.get(
+        "DBT_PROFILES_DIR", "~/.dbt/profiles.yml"
+    )
 
     env = env or {}
 
@@ -73,4 +78,6 @@ def run_dbt(
     try:
         run_command(shell_cmd, env=env)
     except RunCommandError:
-        raise DbtRunError(f'dbt failed to {cmd} successfully, please see log for details')
+        raise DbtRunError(
+            f"dbt failed to {cmd} successfully, please see log for details"
+        )

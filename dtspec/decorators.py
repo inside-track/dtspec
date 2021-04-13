@@ -1,6 +1,7 @@
 import time
 from functools import wraps
 
+
 def retry(exceptions, tries=4, delay=3, backoff=2):
     """
     Retry calling the decorated function using an exponential backoff.
@@ -22,7 +23,7 @@ def retry(exceptions, tries=4, delay=3, backoff=2):
                 try:
                     return fun(*args, **kwargs)
                 except exceptions as err:
-                    msg = '{}, Retrying in {} seconds...'.format(err, mdelay)
+                    msg = "{}, Retrying in {} seconds...".format(err, mdelay)
                     print(msg)
                     time.sleep(mdelay)
                     mtries -= 1
