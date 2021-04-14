@@ -13,12 +13,12 @@ import dtspec.shell
 
 from dtspec.log import LOG
 
-# TODOC: specs must all live in a specs subdirectory
-# TODO: Document environment variable
-
 DTSPEC_ROOT = os.path.join(os.getcwd(), "dtspec")
+DBT_ROOT = os.getcwd()
 if "DTSPEC_ROOT" in os.environ:
     DTSPEC_ROOT = os.environ["DTSPEC_ROOT"]
+if "DBT_ROOT" in os.environ:
+    DBT_ROOT = os.environ["DBT_ROOT"]
 SCHEMAS_PATH = os.path.join(DTSPEC_ROOT, "schemas")
 
 
@@ -105,8 +105,7 @@ def main_test_dbt(args, config):
     if not args.partial_parse:
         dtspec.shell.run_dbt("compile", target=args.target)
 
-    # TODOC: Assumes we're running this in the dbt directory
-    with open("target/manifest.json") as mfile:
+    with open(os.path.join(DBT_ROOT, "target", "manifest.json")) as mfile:
         dbt_manifest = json.loads(mfile.read())
     manifest = dtspec.specs.compile_dbt_manifest(dbt_manifest)
 
@@ -147,7 +146,7 @@ def main_test_dbt(args, config):
 def _clean_target_test_data(config, api, target):
     target_config = config["target_environments"][target]
     engine = _engine_from_config(target_config)
-    LOG.info(f"Cleaning out target test data for target test environment {target}")
+    LOG.info("Cleaning out target test data for target test environment %s", target)
     dtspec.db.clean_target_test_data(engine, api)
 
 
@@ -162,7 +161,7 @@ def _load_test_data(source_engines, api):
 def _get_actuals(config, api, target):
     target_config = config["target_environments"][target]
     engine = _engine_from_config(target_config)
-    LOG.info(f"Fetching results of run from target test environment {target}")
+    LOG.info("Fetching results of run from target test environment %s", target)
     return dtspec.db.get_actuals(engine, api)
 
 
@@ -200,8 +199,8 @@ def _fetch_schema(config, env):
 
 def fetch_schemas(config, env=None):
     envs = [env] if env else list(config["source_environments"].keys())
-    for env in envs:
-        _fetch_schema(config, env)
+    for this_env in envs:
+        _fetch_schema(config, this_env)
 
 
 def _init_test_db(config, env=None, clean=False):
@@ -216,13 +215,8 @@ def _init_test_db(config, env=None, clean=False):
 
 def init_test_db(config, env=None, clean=False):
     envs = [env] if env else list(config["source_environments"].keys())
-    for env in envs:
-        _init_test_db(config, env, clean=clean)
-
-
-# TODO: a dtspec init command that sets up a blank/example specs/main.yml file
-# TODO: Compile dbt refs
-# Also, need to deal with the fact that there could be multiple source scheams (PROD_RAW/PROD_SNAPSHOTS)
+    for this_env in envs:
+        _init_test_db(config, this_env, clean=clean)
 
 
 def compile_dtspec(scenario_selector=None, case_selector=None, manifest=None):

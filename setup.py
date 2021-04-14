@@ -91,6 +91,7 @@ setup(
         'jinja2',
         'sqlalchemy',
         'nest_asyncio',
+        'pyyaml',
     ],
 
     python_requires='>=3',

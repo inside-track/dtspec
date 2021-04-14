@@ -6,38 +6,96 @@
 #
 appdirs==1.4.4
     # via black
+asn1crypto==1.4.0
+    # via
+    #   oscrypto
+    #   snowflake-connector-python
 astroid==2.5.2
     # via pylint
 attrs==20.3.0
     # via
     #   jsonschema
     #   pytest
+azure-common==1.1.27
+    # via snowflake-connector-python
+azure-core==1.13.0
+    # via azure-storage-blob
+azure-storage-blob==12.8.0
+    # via snowflake-connector-python
 black==20.8b1
     # via -r requirements.in
+boto3==1.17.52
+    # via snowflake-connector-python
+botocore==1.20.52
+    # via
+    #   boto3
+    #   s3transfer
+certifi==2020.12.5
+    # via
+    #   msrest
+    #   requests
+    #   snowflake-connector-python
+cffi==1.14.5
+    # via
+    #   cryptography
+    #   snowflake-connector-python
+chardet==3.0.4
+    # via
+    #   requests
+    #   snowflake-connector-python
 click==7.1.2
     # via black
 colorama==0.4.4
     # via -r requirements.in
+cryptography==3.4.7
+    # via
+    #   azure-storage-blob
+    #   pyopenssl
+    #   snowflake-connector-python
 decorator==4.4.2
     # via networkx
+greenlet==1.0.0
+    # via sqlalchemy
+idna==2.10
+    # via
+    #   requests
+    #   snowflake-connector-python
 iniconfig==1.1.1
     # via pytest
 invoke==1.5.0
     # via -r requirements.in
+isodate==0.6.0
+    # via msrest
 isort==5.8.0
     # via pylint
+jinja2==2.11.3
+    # via -r requirements.in
+jmespath==0.10.0
+    # via
+    #   boto3
+    #   botocore
 jsonschema==3.2.0
     # via -r requirements.in
 lazy-object-proxy==1.6.0
     # via astroid
+markupsafe==1.1.1
+    # via jinja2
 mccabe==0.6.1
     # via pylint
+msrest==0.6.21
+    # via azure-storage-blob
 mypy-extensions==0.4.3
     # via black
+nest-asyncio==1.5.1
+    # via -r requirements.in
 networkx==2.5
     # via -r requirements.in
 numpy==1.20.2
     # via pandas
+oauthlib==3.1.0
+    # via requests-oauthlib
+oscrypto==1.2.1
+    # via snowflake-connector-python
 packaging==20.9
     # via pytest
 pandas==1.2.3
@@ -48,8 +106,16 @@ pluggy==0.13.1
     # via pytest
 py==1.10.0
     # via pytest
+pycparser==2.20
+    # via cffi
+pycryptodomex==3.10.1
+    # via snowflake-connector-python
+pyjwt==2.0.1
+    # via snowflake-connector-python
 pylint==2.7.4
     # via -r requirements.in
+pyopenssl==19.1.0
+    # via snowflake-connector-python
 pyparsing==2.4.7
     # via packaging
 pyrsistent==0.17.3
@@ -57,17 +123,42 @@ pyrsistent==0.17.3
 pytest==6.2.2
     # via -r requirements.in
 python-dateutil==2.8.1
-    # via pandas
+    # via
+    #   botocore
+    #   pandas
 pytz==2021.1
-    # via pandas
+    # via
+    #   pandas
+    #   snowflake-connector-python
 pyyaml==5.4.1
     # via -r requirements.in
 regex==2021.3.17
     # via black
+requests-oauthlib==1.3.0
+    # via msrest
+requests==2.25.1
+    # via
+    #   azure-core
+    #   msrest
+    #   requests-oauthlib
+    #   snowflake-connector-python
+s3transfer==0.3.7
+    # via boto3
 six==1.15.0
     # via
+    #   azure-core
+    #   isodate
     #   jsonschema
+    #   pyopenssl
     #   python-dateutil
+snowflake-connector-python==2.4.2
+    # via snowflake-sqlalchemy
+snowflake-sqlalchemy==1.2.4
+    # via -r requirements.in
+sqlalchemy==1.4.7
+    # via
+    #   -r requirements.in
+    #   snowflake-sqlalchemy
 toml==0.10.2
     # via
     #   black
@@ -77,6 +168,10 @@ typed-ast==1.4.2
     # via black
 typing-extensions==3.7.4.3
     # via black
+urllib3==1.26.4
+    # via
+    #   botocore
+    #   requests
 wrapt==1.12.1
     # via astroid
 

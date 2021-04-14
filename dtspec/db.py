@@ -121,7 +121,7 @@ def _select_tables(user_tables, reflected_table_names):
 @retry(sa.exc.InternalError, delay=0)
 def _reflect_table(metadata, engine, namespace, table_name):
     LOG.info("Reflecting table %s.%s", namespace, table_name)
-    sa_table = sa.Table(
+    return sa.Table(
         table_name,
         metadata,
         autoload=True,
@@ -188,10 +188,10 @@ def _write_yaml(output_path, env, namespace, metadata):
 def read_sa_metadata(schema_path):
     metadata = sa.MetaData()
     schemas = {}
-    for yaml_file in glob.glob(os.path.join(schema_path, f"*.schema.yml")):
+    for yaml_file in glob.glob(os.path.join(schema_path, "*.schema.yml")):
         yaml_basename = os.path.basename(yaml_file)
 
-        parsed_filename = re.search(fr"([^.]+).([^.]+).schema.yml", yaml_basename)
+        parsed_filename = re.search(r"([^.]+).([^.]+).schema.yml", yaml_basename)
         env = parsed_filename.group(1)
         namespace = parsed_filename.group(2)
         schemas[env] = schemas.get(env, {})
@@ -283,24 +283,29 @@ def serialize(data):
     return serialized_data
 
 
-def load_test_data(source_engines, api, schemas_path):
-    schema_metadata = read_sa_metadata(schemas_path)
-    source_sa_metadata = {}
+def _source_fqn_to_sa(source_engines, schema_metadata):
+    source_fqn_to_sa = {}
     for env_key, env_val in schema_metadata.items():
         for namespace_key, tables in env_val.items():
             for table_name, table_sa_metadata in tables.items():
                 db_name = source_engines[env_key].url.database
                 source_fqn = f"{db_name}.{namespace_key}.{table_name}"
-                source_sa_metadata[source_fqn] = {
+                source_fqn_to_sa[source_fqn] = {
                     "env": env_key,
                     "engine": source_engines[env_key],
                     "sa_table": table_sa_metadata,
                 }
+    return source_fqn_to_sa
+
+
+def load_test_data(source_engines, api, schemas_path):
+    schema_metadata = read_sa_metadata(schemas_path)
+    source_fqn_to_sa = _source_fqn_to_sa(source_engines, schema_metadata)
 
     truncate_by_env_sqls = {env: [] for env in source_engines.keys()}
     insert_by_env_sqls = {env: [] for env in source_engines.keys()}
     for source_name, data in api.spec["sources"].items():
-        this_source_meta = source_sa_metadata[source_name]
+        this_source_meta = source_fqn_to_sa[source_name]
         source_insert = (
             this_source_meta["sa_table"]
             .insert(bind=this_source_meta["engine"])
@@ -314,7 +319,7 @@ def load_test_data(source_engines, api, schemas_path):
         insert_by_env_sqls[this_source_meta["env"]].append(source_insert)
 
     for env, source_engine in source_engines.items():
-        LOG.info(f"Loading test data into source test environment {env}")
+        LOG.info("Loading test data into source test environment %s", env)
         execute_sqls(engine=source_engine, sqls=truncate_by_env_sqls[env])
 
         execute_sqls(engine=source_engine, sqls=insert_by_env_sqls[env])
@@ -334,7 +339,7 @@ def get_actuals(engine, api):
     serialized_actuals = {}
     with engine.connect() as conn:
         for target in api.spec["targets"].keys():
-            LOG.info(f"Fetching actual data for target {target}")
+            LOG.info("Fetching actual data for target %s", target)
             sa_results = conn.execute(f"SELECT * FROM {target}").fetchall()
             serialized_actuals[target] = {
                 "records": [

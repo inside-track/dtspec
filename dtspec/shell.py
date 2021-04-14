@@ -77,7 +77,7 @@ def run_dbt(
 
     try:
         run_command(shell_cmd, env=env)
-    except RunCommandError:
+    except RunCommandError as err:
         raise DbtRunError(
             f"dbt failed to {cmd} successfully, please see log for details"
-        )
+        ) from err

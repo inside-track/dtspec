@@ -2,10 +2,14 @@ pandas
 jsonschema
 colorama
 networkx
+jinja2
+sqlalchemy
+nest_asyncio
+pyyaml
 
 # development only
 pytest
-pyyaml
 invoke
 pylint
 black
+snowflake-sqlalchemy

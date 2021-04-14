@@ -6,9 +6,6 @@ import jinja2
 import yaml
 from dateutil.relativedelta import relativedelta
 
-from dtspec.log import LOG
-from dtspec.decorators import retry
-
 
 def str_presenter(dumper, data):
     if len(data.splitlines()) > 1:  # check for multiline string
@@ -70,9 +67,6 @@ def compile_spec(
 
     return spec
 
-    # with open(os.path.join(search_path, '..', 'compile_dtspec.yml')) as compiled_file:
-    #     yaml.dumps(compiled_file, spec)
-
 
 def _collect_files(search_path):
     spec_templates = []
@@ -111,7 +105,6 @@ def _render_template(template_env, yaml_file, manifest=None):
         dbt_source=lambda source_name, name: dbt_source(manifest, source_name, name),
         dbt_ref=lambda name: dbt_ref(manifest, name),
     )
-    #    LOG.debug('Rendering %s:\n%s', yaml_file, rendered_template)
     return yaml.safe_load(rendered_template)
 
 
