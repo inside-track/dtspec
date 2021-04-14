@@ -275,9 +275,6 @@ def serialize(data):
             else:
                 serialized_row[k] = v
 
-            # if k in app.lib.sql.SNOWFLAKE_KEYWORDS:
-            #     serialized_row[case_keyword(k)] = serialized_row.pop(k)
-
         serialized_data.append(serialized_row)
 
     return serialized_data
