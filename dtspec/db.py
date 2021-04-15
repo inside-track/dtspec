@@ -21,11 +21,13 @@ class UnknownEngineTypeError(Exception):
 
 def generate_engine(
     engine_type,
-    host,
+    host=None,
+    account=None,
     port=None,
     user=None,
     password=None,
     dbname=None,
+    database=None,
     warehouse=None,
     role=None,
 ):
@@ -36,10 +38,10 @@ def generate_engine(
     if engine_type == "snowflake":
         return sa.create_engine(
             snowflake.sqlalchemy.URL(
-                account=host,
+                account=account,
                 user=user,
                 password=password,
-                database=dbname,
+                database=database,
                 schema="public",
                 warehouse=warehouse,
                 role=role,
@@ -257,6 +259,12 @@ def init_test_db(env, engine, schemas_path, clean=False):
 
 
 def clean_target_test_data(engine, api):
+    namespaces = {target.split('.')[1] for target in api.spec["targets"].keys()}
+    execute_sqls(
+        engine,
+        [f"CREATE SCHEMA IF NOT EXISTS {namespace}" for namespace in namespaces]
+    )
+
     execute_sqls(
         engine,
         [f"DROP TABLE IF EXISTS {target}" for target in api.spec["targets"].keys()],
@@ -285,7 +293,7 @@ def _source_fqn_to_sa(source_engines, schema_metadata):
     for env_key, env_val in schema_metadata.items():
         for namespace_key, tables in env_val.items():
             for table_name, table_sa_metadata in tables.items():
-                db_name = source_engines[env_key].url.database
+                db_name = source_engines[env_key].url.database.split('/')[0]
                 source_fqn = f"{db_name}.{namespace_key}.{table_name}"
                 source_fqn_to_sa[source_fqn] = {
                     "env": env_key,
@@ -302,7 +310,10 @@ def load_test_data(source_engines, api, schemas_path):
     truncate_by_env_sqls = {env: [] for env in source_engines.keys()}
     insert_by_env_sqls = {env: [] for env in source_engines.keys()}
     for source_name, data in api.spec["sources"].items():
-        this_source_meta = source_fqn_to_sa[source_name]
+        try:
+            this_source_meta = source_fqn_to_sa[source_name]
+        except KeyError as err:
+            raise KeyError(f'Unable to find source {source_name} in schema metadata: {source_fqn_to_sa.keys()}') from err
         source_insert = (
             this_source_meta["sa_table"]
             .insert(bind=this_source_meta["engine"])
@@ -329,7 +340,8 @@ def _stringify_sa_value(val):
         return "{True}"
     if val is False:
         return "{False}"
-    return str(val)
+    str_val = re.sub(r'\.0+$', '', str(val))
+    return str_val
 
 
 def get_actuals(engine, api):

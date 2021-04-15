@@ -168,11 +168,13 @@ def _get_actuals(config, api, target):
 def _engine_from_config(schema_config):
     return dtspec.db.generate_engine(
         engine_type=schema_config["type"],
-        host=schema_config["host"],
+        host=schema_config.get("host"),
+        account=schema_config.get("account"),
         port=schema_config.get("port"),
         user=schema_config["user"],
         password=schema_config["password"],
-        dbname=schema_config["dbname"],
+        dbname=schema_config.get("dbname"),
+        database=schema_config.get("database"),
         warehouse=schema_config.get("warehouse"),
         role=schema_config.get("role"),
     )
