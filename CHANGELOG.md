@@ -1,5 +1,9 @@
 # dtspec Changelog
 
+## 0.7.0
+
+* New `dtspec` cli command that helps with setting up test environments and running against dbt projects.
+
 ## 0.6.0
 
 * Identifiers can now be embedded in both source and expectations.
