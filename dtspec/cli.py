@@ -78,6 +78,8 @@ def parse_args():
 
 
 def get_config():
+    'Read and parse configuration file (via Jinja2)'
+
     template_loader = jinja2.FileSystemLoader(searchpath=DTSPEC_ROOT)
     template_env = jinja2.Environment(loader=template_loader)
     template = template_env.get_template("config.yml")
