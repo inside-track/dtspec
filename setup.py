@@ -92,6 +92,7 @@ setup(
         'sqlalchemy',
         'nest_asyncio',
         'pyyaml',
+        'snowflake-sqlalchemy',
     ],
 
     python_requires='>=3',
