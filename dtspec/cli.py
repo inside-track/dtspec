@@ -26,7 +26,9 @@ SCHEMAS_PATH = os.path.join(DTSPEC_ROOT, "schemas")
 class NothingToDoError(Exception):
     pass
 
-class InvalidConfigFile(Exception): pass
+
+class InvalidConfigFile(Exception):
+    pass
 
 
 def parse_args():
@@ -36,56 +38,99 @@ def parse_args():
 
     init_parser = subparsers.add_parser("init", help="initialize a new dtspec project")
     init_parser.set_defaults(subcommand="init")
-    init_parser.add_argument("--name", dest="name", default='dtspec', help="name of dtspec path (default: dtspec; recommend run this command in the dbt directory)")
+    init_parser.add_argument(
+        "--name",
+        dest="name",
+        default="dtspec",
+        help="name of dtspec path (default: dtspec; recommend run this command in the dbt directory)",
+    )
 
     db_parser = subparsers.add_parser("db", help="db and schema operations")
     db_parser.set_defaults(subcommand="db")
-    db_parser.add_argument("--env", dest="env", default=None, help="use to specify source environment for schema commands (default: all)")
+    db_parser.add_argument(
+        "--env",
+        dest="env",
+        default=None,
+        help="use to specify source environment for schema commands (default: all)",
+    )
 
     db_parser.add_argument(
-        "--fetch-schemas", dest="fetch_schemas", const=True, nargs="?", default=False,
-        help="reflect table schemas from source schema databases (results saved to schemas directory)"
+        "--fetch-schemas",
+        dest="fetch_schemas",
+        const=True,
+        nargs="?",
+        default=False,
+        help="reflect table schemas from source schema databases (results saved to schemas directory)",
     )
     db_parser.add_argument(
-        "--init-test-db", dest="init_test_db", const=True, nargs="?", default=False,
-        help="initialize test database using reflected table schemas (creates empty tables)"
+        "--init-test-db",
+        dest="init_test_db",
+        const=True,
+        nargs="?",
+        default=False,
+        help="initialize test database using reflected table schemas (creates empty tables)",
     )
     db_parser.add_argument(
-        "--clean", dest="clean", const=True, nargs="?", default=False,
-        help="removes all tables in test database (can be combined with --init-test-db)"
+        "--clean",
+        dest="clean",
+        const=True,
+        nargs="?",
+        default=False,
+        help="removes all tables in test database (can be combined with --init-test-db)",
     )
 
     dbt_parser = subparsers.add_parser("test-dbt", help="run dtspec tests for dbt")
     dbt_parser.set_defaults(subcommand="test-dbt")
     dbt_parser.add_argument(
-        "--compile-only", dest="compile_only", const=True, nargs="?", default=False,
-        help="skips running tests, only compiles dtspec spec files (results saved in compiled_specs.yml"
+        "--compile-only",
+        dest="compile_only",
+        const=True,
+        nargs="?",
+        default=False,
+        help="skips running tests, only compiles dtspec spec files (results saved in compiled_specs.yml",
     )
     dbt_parser.add_argument("--models", dest="models", default=None)
     dbt_parser.add_argument(
-        "--skip-seed", dest="skip_seed", const=True, nargs="?", default=False,
-        help="skip running `dbt seed` before `dbt run`"
+        "--skip-seed",
+        dest="skip_seed",
+        const=True,
+        nargs="?",
+        default=False,
+        help="skip running `dbt seed` before `dbt run`",
     )
     dbt_parser.add_argument(
-        "--partial-parse", dest="partial_parse", const=True, nargs="?", default=False,
-        help="skip re-compiling the dbt project (which only needs to be if the dbt code changed from the last dtspec run)"
+        "--partial-parse",
+        dest="partial_parse",
+        const=True,
+        nargs="?",
+        default=False,
+        help="skip re-compiling the dbt project (which only needs to be if the dbt code changed from the last dtspec run)",
     )
-    dbt_parser.add_argument("--target", dest="target", default="dtspec",
-        help="specify the name of the dbt target (default: dtspec)"
+    dbt_parser.add_argument(
+        "--target",
+        dest="target",
+        default="dtspec",
+        help="specify the name of the dbt target (default: dtspec)",
     )
 
-    dbt_parser.add_argument("--scenarios", dest="scenarios", default=None,
-        help="a regular expression that selects matching scenarios names"
+    dbt_parser.add_argument(
+        "--scenarios",
+        dest="scenarios",
+        default=None,
+        help="a regular expression that selects matching scenarios names",
     )
-    dbt_parser.add_argument("--cases", dest="cases", default=None,
-        help="a regular expression that selects matching case names"
+    dbt_parser.add_argument(
+        "--cases",
+        dest="cases",
+        default=None,
+        help="a regular expression that selects matching case names",
     )
 
     return parser.parse_args()
 
 
 def get_config():
-    'Read and parse configuration file (via Jinja2)'
+    "Read and parse configuration file (via Jinja2)"
 
     template_loader = jinja2.FileSystemLoader(searchpath=DTSPEC_ROOT)
     template_env = jinja2.Environment(loader=template_loader)
@@ -98,24 +143,25 @@ def get_config():
     _validate_config(config)
     return config
 
+
 def _validate_config(config):
-    for env_name, source_env in config['source_environments'].items():
+    for env_name, source_env in config["source_environments"].items():
         schema_config = (
-            source_env['schema'].get('host'),
-            source_env['schema'].get('account'),
-            source_env['schema'].get('dbname'),
-            source_env['schema'].get('database')
+            source_env["schema"].get("host"),
+            source_env["schema"].get("account"),
+            source_env["schema"].get("dbname"),
+            source_env["schema"].get("database"),
         )
         test_config = (
-            source_env['test'].get('host'),
-            source_env['test'].get('account'),
-            source_env['test'].get('dbname'),
-            source_env['test'].get('database')
+            source_env["test"].get("host"),
+            source_env["test"].get("account"),
+            source_env["test"].get("dbname"),
+            source_env["test"].get("database"),
         )
         if schema_config == test_config:
             raise InvalidConfigFile(
-                f'schema and test environments are the same for environment `{env_name}`\n'
-                'these environments need to be different to prevent test data overwriting production!'
+                f"schema and test environments are the same for environment `{env_name}`\n"
+                "these environments need to be different to prevent test data overwriting production!"
             )
 
 
@@ -136,9 +182,10 @@ def main():
 
 
 def main_init(args):
-    template_path = os.path.join(pathlib.Path(__file__).parent.absolute(), 'init')
+    template_path = os.path.join(pathlib.Path(__file__).parent.absolute(), "init")
     target_path = os.path.join(os.getcwd(), args.name)
     shutil.copytree(template_path, target_path)
+
 
 def main_db(args, config):
     if args.fetch_schemas:
@@ -217,18 +264,7 @@ def _get_actuals(config, api, target):
 
 
 def _engine_from_config(schema_config):
-    return dtspec.db.generate_engine(
-        engine_type=schema_config["type"],
-        host=schema_config.get("host"),
-        account=schema_config.get("account"),
-        port=schema_config.get("port"),
-        user=schema_config["user"],
-        password=schema_config["password"],
-        dbname=schema_config.get("dbname"),
-        database=schema_config.get("database"),
-        warehouse=schema_config.get("warehouse"),
-        role=schema_config.get("role"),
-    )
+    return dtspec.db.generate_engine(**schema_config)
 
 
 def _fetch_schema(config, env):
