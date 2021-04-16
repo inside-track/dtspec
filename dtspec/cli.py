@@ -2,6 +2,7 @@ import os
 import json
 import argparse
 import pathlib
+import shutil
 
 import yaml
 import jinja2
@@ -31,9 +32,13 @@ def parse_args():
 
     subparsers = parser.add_subparsers(help="dtspec subcommand")
 
+    init_parser = subparsers.add_parser("init", help="initialize a new dtspec project")
+    init_parser.set_defaults(subcommand="init")
+    init_parser.add_argument("--name", dest="name", default='dtspec', help="name of dtspec path (default: dtspec; recommend run this command in the dbt directory)")
+
     db_parser = subparsers.add_parser("db", help="db and schema operations")
     db_parser.set_defaults(subcommand="db")
-    db_parser.add_argument("--env", dest="env", default=None, help="use to specify source environment for schema commands (Default: all)")
+    db_parser.add_argument("--env", dest="env", default=None, help="use to specify source environment for schema commands (default: all)")
 
     db_parser.add_argument(
         "--fetch-schemas", dest="fetch_schemas", const=True, nargs="?", default=False,
@@ -95,6 +100,9 @@ def main():
     args = parse_args()
     config = get_config()
 
+    if args.subcommand == "init":
+        return main_init(args)
+
     if args.subcommand == "db":
         return main_db(args, config)
 
@@ -103,6 +111,11 @@ def main():
 
     raise NothingToDoError
 
+
+def main_init(args):
+    template_path = os.path.join(pathlib.Path(__file__).parent.absolute(), 'init')
+    target_path = os.path.join(os.getcwd(), args.name)
+    shutil.copytree(template_path, target_path)
 
 def main_db(args, config):
     if args.fetch_schemas:
