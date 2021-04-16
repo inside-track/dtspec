@@ -28,38 +28,51 @@ class NothingToDoError(Exception):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="dtspec cli")
-    parser.add_argument("--env", dest="env", default=None)
 
     subparsers = parser.add_subparsers(help="dtspec subcommand")
 
     db_parser = subparsers.add_parser("db", help="db and schema operations")
     db_parser.set_defaults(subcommand="db")
+    db_parser.add_argument("--env", dest="env", default=None, help="use to specify source environment for schema commands (Default: all)")
+
     db_parser.add_argument(
-        "--fetch-schemas", dest="fetch_schemas", const=True, nargs="?", default=False
+        "--fetch-schemas", dest="fetch_schemas", const=True, nargs="?", default=False,
+        help="reflect table schemas from source schema databases (results saved to schemas directory)"
     )
     db_parser.add_argument(
-        "--init-test-db", dest="init_test_db", const=True, nargs="?", default=False
+        "--init-test-db", dest="init_test_db", const=True, nargs="?", default=False,
+        help="initialize test database using reflected table schemas (creates empty tables)"
     )
     db_parser.add_argument(
-        "--clean", dest="clean", const=True, nargs="?", default=False
+        "--clean", dest="clean", const=True, nargs="?", default=False,
+        help="removes all tables in test database (can be combined with --init-test-db)"
     )
 
     dbt_parser = subparsers.add_parser("test-dbt", help="run dtspec tests for dbt")
     dbt_parser.set_defaults(subcommand="test-dbt")
     dbt_parser.add_argument(
-        "--compile-only", dest="compile_only", const=True, nargs="?", default=False
+        "--compile-only", dest="compile_only", const=True, nargs="?", default=False,
+        help="skips running tests, only compiles dtspec spec files (results saved in compiled_specs.yml"
     )
     dbt_parser.add_argument("--models", dest="models", default=None)
     dbt_parser.add_argument(
-        "--skip-seed", dest="skip_seed", const=True, nargs="?", default=False
+        "--skip-seed", dest="skip_seed", const=True, nargs="?", default=False,
+        help="skip running `dbt seed` before `dbt run`"
     )
     dbt_parser.add_argument(
-        "--partial-parse", dest="partial_parse", const=True, nargs="?", default=False
+        "--partial-parse", dest="partial_parse", const=True, nargs="?", default=False,
+        help="skip re-compiling the dbt project (which only needs to be if the dbt code changed from the last dtspec run)"
     )
-    dbt_parser.add_argument("--target", dest="target", default="dtspec")
+    dbt_parser.add_argument("--target", dest="target", default="dtspec",
+        help="specify the name of the dbt target (default: dtspec)"
+    )
 
-    dbt_parser.add_argument("--scenarios", dest="scenarios", default=None)
-    dbt_parser.add_argument("--cases", dest="cases", default=None)
+    dbt_parser.add_argument("--scenarios", dest="scenarios", default=None,
+        help="a regular expression that selects matching scenarios names"
+    )
+    dbt_parser.add_argument("--cases", dest="cases", default=None,
+        help="a regular expression that selects matching case names"
+    )
 
     return parser.parse_args()
 
