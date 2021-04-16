@@ -58,7 +58,7 @@ def markdown_to_df(markdown):
     except (TypeError, InvalidHeaderSeparatorError) as err:
         raise BadMarkdownTableError(
             f"Unabled to parse markdown table:\n{markdown}\n\n" + f"Reason: {err}"
-        )
+        ) from err
 
     try:
         df = pd.read_csv(
@@ -67,7 +67,7 @@ def markdown_to_df(markdown):
     except pd.errors.ParserError as err:
         raise BadMarkdownTableError(
             f"Unable to parse markdown table:\n{markdown}\n\n" + f"Reason: {err}"
-        )
+        ) from err
 
     return df
 
@@ -90,11 +90,11 @@ def translate_embedded_identifiers(df, case, identifiers, identifier_regex=None)
                 translated_id = identifiers[imatch["identifier"]].generate(
                     case=case, named_id=imatch["named_id"]
                 )[imatch["attribute"]]
-            except KeyError as _err:
+            except KeyError as err:
                 raise UnableToFindNamedIdError(
                     f"Error finding embedded named identifier in case {case.name}: "
                     + f"failed finding identifier named '{imatch['identifier']}' with attribute '{imatch['attribute']}'"
-                )
+                ) from err
             v = identifier_regex.sub(translated_id, v, count=1)
 
         return v
@@ -191,7 +191,7 @@ class Identifier:
     def find(self, attribute, raw_id, target_name="Unknown"):
         "Given an attribute and a raw id, return named attribute and case"
         found = SimpleNamespace(named_id=None, case=None)
-        for case_name, case in self.cached_ids.items():
+        for _case_name, case in self.cached_ids.items():
             for named_id, attributes in case.named_ids.items():
                 if attributes[attribute] == raw_id:
                     found.named_id = named_id
@@ -452,7 +452,7 @@ class Factory:
             except BadMarkdownTableError as err:
                 raise BadMarkdownTableError(
                     f"Unable to generate data for source {source_name}:\n{err}"
-                )
+                ) from err
 
     def _compose_data(self, inherit_from):
         if inherit_from is None:

@@ -14,7 +14,7 @@ def assert_frame_equal(actual, expected, **kwargs):
         msg = str(err)
         msg += "\nActual:\n{}".format(actual)
         msg += "\nExpected:\n{}".format(expected)
-        raise AssertionError(msg)
+        raise AssertionError(msg) from err
 
 
 class MissingExpectedKeysAssertionError(Exception):
@@ -67,7 +67,7 @@ class DataExpectation:
         except BadMarkdownTableError as err:
             raise BadMarkdownTableError(
                 f"Unable to generate data for target {self.target}:\n{err}"
-            )
+            ) from err
 
         self._add_constants(expected_df)
         return expected_df

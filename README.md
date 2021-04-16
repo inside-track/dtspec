@@ -462,13 +462,213 @@ api.load_actuals(serialized_actuals)
 api.assert_expectations()
 ````
 
+## dbt support
 
+dtspec also contains a CLI tool that can facilitate using it with [dbt](https://getdbt.com).
+The CLI tools helps you set up a test environment, run dbt in that environment, and
+execute the dbt tests.  The CLI tool currently only works for Postgres and Snowflake dbt
+projects.
+
+See the [dbt-container-skeleton](https://github.com/gnilrets/dbt-container-skeleton) for a
+working example.
+
+### dtspec CLI Config
+
+All of the dtspec files should be placed in a subdirectory of your dbt project: `dbt/dtspec`.
+The first thing to set up for the dtspec CLI is the configuration file, which should
+be placed in `dtspec/config.yml`.  The configuration file tells dtspec how to recreate
+the table schemas in a test environment, where to recreate the table schemas, and where
+to find the results of a dbt run.  Here is an example:
+
+````yaml
+# A target environment is where the output of data transformations appear.
+# Typically, there will only be on target environment.
+target_environments:
+  # The target environment IS NOT your production environment.  It needs to be a separate
+  # database where dbt will run against the test data that dtspec generates.  The name
+  # of this environment needs to be the same as a target defined in dbt profiles.yml (in this case `dtspec`)
+  dtspec:
+    # Field names here follow the same conventions as dbt profiles.yml (https://docs.getdbt.com/dbt-cli/configure-your-profile)
+    type: postgres
+    host: "{{ env_var('POSTGRES_HOST') }}"
+    port: 5432
+    user: "{{ env_var('POSTGRES_USER') }}"
+    password: "{{ env_var('POSTGRES_PASSWORD') }}"
+    dbname: "{{ env_var('POSTGRES_DBNAME') }}_dtspec"
+
+# A source environment is where source data is located.  It may be in the same database
+# as the target environment or it may be different if the data warehouse supports it (e.g., Snowflake).
+# It is also possible to define several source environments if your source data is spread
+# across multiple databases.
+source_environments:
+  raw:
+    # Use `tables` to specify source tables that need to be present to run tests.
+    tables:
+      # `wh_raw` is the name of a namespace (aka schema) in the `raw` source environment
+      wh_raw:
+        # tables may be listed indivdually (or, use `wh_raw: '*'` to indicate all tables within the `wh_raw` namespace)
+        - raw_customers
+        - raw_orders
+        - raw_payments
+
+    # In order to run tests, we need to replicate the table schemas in the test environment.
+    # The schema section here contains credentials for a database where those tables are defined.
+    # This is likely a production database (in your warehouse), or is a production replica.
+    # dtspec only uses this database to read reflect the table schemas (via `dtspec db --fetch-schemas`).
+    schema:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST') }}"
+      port: 5432
+      user: "{{ env_var('POSTGRES_USER') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD') }}"
+      dbname: "{{ env_var('POSTGRES_DBNAME') }}"
+    # The test section contains credentials for a database where test data will be created.
+    # Data in this database is destroyed and rebuilt for every run of dtspec and SHOULD NOT be
+    # the same as the schema credentials defined above.
+    test:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST') }}"
+      port: 5432
+      user: "{{ env_var('POSTGRES_USER') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD') }}"
+      dbname: "{{ env_var('POSTGRES_DBNAME') }}_dtspec"
+
+  # Pretending snapshots are in a different database because Postgres doesn't support cross-db queries.
+  # This is how you would do it if snapshots were in a different database than other raw source data.
+  snapshots:
+    tables:
+      snapshots: '*'
+    schema:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST') }}"
+      port: 5432
+      user: "{{ env_var('POSTGRES_USER') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD') }}"
+      dbname: "{{ env_var('POSTGRES_DBNAME') }}"
+    test:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST') }}"
+      port: 5432
+      user: "{{ env_var('POSTGRES_USER') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD') }}"
+      dbname: "{{ env_var('POSTGRES_DBNAME') }}_dtspec"
+````
+
+### Test environment setup
+
+Once the configuration file has been defined, the next step is to fetch/reflect schemas for
+the source tables.  From the `dbt` directory, run the following CLI command:
+
+    dtspec db --fetch-schemas
+
+This will query all of the databases defined in the `schema` section of the source
+environments defined in `dtspec/config.yml`, and create table schema files in `dtspec/schemas`.
+The files in this directory should be committed to source control and updated whenever
+your source data changes (in so much as it would affect the dtspec tests).
+
+Next, initialize the test databases defined in the `test` section of the source
+environments defined in `dtspec/config.yml` with the CLI command
+
+    dtspec db --init-test-db
+
+This will create empty source tables in your test databases, ready to be loaded with test data.
+
+
+### Executing tests
+
+In order to use dtspec with dbt, spec files must make use of the `dbt_source` and `dbt_ref`
+Jinja functions.  These are analogous to the dbt `source` and `ref` functions.  dtspec
+will compile your dbt project and use the `manifest.yml` file to resolve the names
+of sources and targets that you want to test.  For example, the SomeStudents factory
+would be written as follows if this were a dbt project:
+
+````yaml
+factories:
+  - factory: SomeStudents
+    data:
+      - source: {{ dbt_source('raw', 'raw_students') }}
+        table: |
+          | id | name   |
+          | -  | -      |
+          | 1  | Buffy  |
+          | 2  | Willow |
+````
+
+and an expectation would be:
+
+````yaml
+    cases:
+      - case: HelloGang
+        expected:
+          data:
+            - target: {{ dbt_ref('salutations') }}
+              table: |
+                | id | salutation   |
+                | -  | -            |
+                | 1  | Hello Buffy  |
+                | 2  | Hello Willow |
+````
+
+With these references set, dtspec tests can be executed via the CLI command:
+
+    dtspec test-dbt
+
+This command will do the following:
+
+1. It will first compile your dbt project.  If your dbt code does not change between
+   dtspec tests, you may skip this step by pass the `--partial-parse` argument.
+2. The dtspec spec files are compiled into a single document and dbt references are resolved.
+   The compiled dtspec document is output to `dtspec/compiled_specs.yml`, which does not
+   need to be saved to source control.
+3. Source data is generated and loaded into the test databases.
+4. dbt is executed against the test database.
+5. The models that dbt built in the target test environment are extracted.  These are the "actuals".
+6. The actuals are compared with the expected data as specified in the dtspec specs.
+
+The `test-dbt` command has several options that may be useful.  See `dtspec test-dbt -h` for a full
+list, but here are some noteworthy options:
+
+- `--models` specifies the models that dbt should run, using standard dbt model selection syntax.
+- `--scenarios` is used to restrict the number of scenarios that are tested.  The argument is a
+  regular expression that will match on the compiled Scenario name.  This can be used
+  in combination with the `--models` command to only run those tests and models that you're
+  concerned with.
+
+### Additonal CLI notes
+
+If you want to see more detailed loggin information, set the `DTSPEC_LOG_LEVEL` environment
+variable (options are DEBUG, INFO, WARN, and ERROR).  For example:
+
+    DTSPEC_LOG_LEVEL=INFO dtspec test-dbt
+
+If you really don't want to put dtspec in the dbt project directory you can override the
+default by setting `DTSPEC_ROOT` and `DBT_ROOT` environment variables that point
+to the root path of these projects.
+
+When dtspec is run via the CLI, it recognizes nulls and booleans in the spec files.  To
+indicate these kinds of values in a dtspec spec, use `{NULL}`, `{True}`, and `{False}`.
+For example:
+
+````yaml
+    cases:
+      - case: HelloGang
+        expected:
+          data:
+            - target: {{ dbt_ref('salutations') }}
+              table: |
+                | id | salutation   | is_witch |
+                | -  | -            | -        |
+                | 1  | Hello Buffy  | {False}  |
+                | 2  | Hello Willow | {True}   |
+                | 3  | Hello NA     | {NULL}   |
+````
 
 ## Additional notes about dtspec
 
 * At the moment, all source data values are generated as strings.  It
   is up to the the user to enforce data types suitable to their data
-  transformation system.
+  transformation system.  Note that the dtspec dbt CLI commands handle this
+  for Postgres and Snowflake warehouses.
 * Additionally, data expectations are stringified prior to running assertions.
 
 ## Contributing
@@ -480,7 +680,7 @@ We welcome contributors!  Please submit any suggests or pull requests in Github.
 Create an appropriate python environment.  I like [miniconda](https://conda.io/miniconda.html),
 but use whatever you like:
 
-    conda create --name dtspec python=3.6
+    conda create --name dtspec python=3.8
     conda activate dtspec
 
 Then install pip packages
