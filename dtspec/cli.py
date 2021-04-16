@@ -26,6 +26,8 @@ SCHEMAS_PATH = os.path.join(DTSPEC_ROOT, "schemas")
 class NothingToDoError(Exception):
     pass
 
+class InvalidConfigFile(Exception): pass
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="dtspec cli")
@@ -93,7 +95,28 @@ def get_config():
     )
     config = yaml.safe_load(rendered_template)
 
+    _validate_config(config)
     return config
+
+def _validate_config(config):
+    for env_name, source_env in config['source_environments'].items():
+        schema_config = (
+            source_env['schema'].get('host'),
+            source_env['schema'].get('account'),
+            source_env['schema'].get('dbname'),
+            source_env['schema'].get('database')
+        )
+        test_config = (
+            source_env['test'].get('host'),
+            source_env['test'].get('account'),
+            source_env['test'].get('dbname'),
+            source_env['test'].get('database')
+        )
+        if schema_config == test_config:
+            raise InvalidConfigFile(
+                f'schema and test environments are the same for environment `{env_name}`\n'
+                'these environments need to be different to prevent test data overwriting production!'
+            )
 
 
 def main():
