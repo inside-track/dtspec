@@ -636,14 +636,20 @@ list, but here are some noteworthy options:
 
 ### Additonal CLI notes
 
+#### Log level
+
 If you want to see more detailed loggin information, set the `DTSPEC_LOG_LEVEL` environment
 variable (options are DEBUG, INFO, WARN, and ERROR).  For example:
 
     DTSPEC_LOG_LEVEL=INFO dtspec test-dbt
 
+#### Project location
+
 If you really don't want to put dtspec in the dbt project directory you can override the
 default by setting `DTSPEC_ROOT` and `DBT_ROOT` environment variables that point
 to the root path of these projects.
+
+#### Special Values
 
 When dtspec is run via the CLI, it recognizes nulls and booleans in the spec files.  To
 indicate these kinds of values in a dtspec spec, use `{NULL}`, `{True}`, and `{False}`.
@@ -662,6 +668,31 @@ For example:
                 | 2  | Hello Willow | {True}   |
                 | 3  | Hello NA     | {NULL}   |
 ````
+
+#### Jinja context
+
+When writing spec files that will be parsed with the dtspec CLI, the following functions
+are available in the jinja context:
+
+* `datetime` -- This is the [Python datetime.datetime type](https://docs.python.org/3/library/datetime.html)
+* `date` -- This is the [Python datetime.date type](https://docs.python.org/3/library/datetime.html)
+* `relativedelta` -- This is the [Python relativedelta type0](https://dateutil.readthedocs.io/en/stable/relativedelta.html)
+* `UTCNOW` -- The UTC datetime value at the time the specs are parsed
+* `TODAY` -- The current UTC date value at the time the specs are parsed
+* `YESTERDAY` -- Yesterday's date
+* `TOMORROW` -- Tomorrow's date
+* `dbt_source` -- Used to reference dbt sources
+* `dbt_ref` -- Used to reference dbt models
+
+Some example of using these functions:
+
+    - source: raw_products
+       table: |
+        | export_time                          | file                    | product_id | product_name |
+        | -                                    | -                       | -          | -            |
+        | {{ YESTERDAY }}                      | products-2021-01-06.csv | milk       | Milk         |
+        | {{ TODAY - relativedelta(days=5) }}  | products-2021-01-02.csv | milk       | Milk         |
+
 
 ## Additional notes about dtspec
 
