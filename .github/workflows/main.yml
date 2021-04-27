@@ -7,7 +7,6 @@ jobs:
     name: Lint and Test
     runs-on: ubuntu-latest
 
-
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -27,3 +26,71 @@ jobs:
 
       - name: tests
         run: inv test
+
+  integration-test:
+    name: CLI Integration test
+    runs-on: ubuntu-latest
+    container: gnilrets/dbt-runner:main
+
+
+    env:
+      PYTHONPATH: ${{ github.workspace }}/dbt-container-skeleton
+      DBT_PROFILES_DIR: ${{ github.workspace }}/dbt-container-skeleton/dbt
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DBNAME: postgres
+
+    services:
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image
+        image: postgres
+        # Provide the password for postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5432:5432
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: dbt-container-skeleton/dbt
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Checkout dbt-container-skeleton
+        uses: actions/checkout@v2
+        with:
+          repository: gnilrets/dbt-container-skeleton
+          path: dbt-container-skeleton
+
+      - name: Install current dtspec
+        run: pip install -e ../..
+
+      - name: Create test database
+        run:  PGPASSWORD=${POSTGRES_PASSWORD} createdb -h ${POSTGRES_HOST} -U ${POSTGRES_USER} ${POSTGRES_DBNAME}_dtspec
+
+      - name: Test database initialization
+        run: DTSPEC_LOG_LEVEL=debug dtspec db --init-test-db
+
+      - name: Test database reflection
+        run: DTSPEC_LOG_LEVEL=debug POSTGRES_DBNAME=${POSTGRES_DBNAME}_dtspec dtspec db --fetch-schemas
+
+      - name: Clean and re-initialize test database
+        run: DTSPEC_LOG_LEVEL=debug dtspec db --init-test-db --clean
+
+      - name: Compile dtspec project
+        run: dtspec test-dbt --compile-only
+
+      - name: Test running dbt
+        run: DTSPEC_LOG_LEVEL=debug dtspec test-dbt
