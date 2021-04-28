@@ -578,7 +578,7 @@ This will create empty source tables in your test databases, ready to be loaded 
 
 In order to use dtspec with dbt, spec files must make use of the `dbt_source` and `dbt_ref`
 Jinja functions.  These are analogous to the dbt `source` and `ref` functions.  dtspec
-will compile your dbt project and use the `manifest.yml` file to resolve the names
+will compile your dbt project and use the `dbt/target/manifest.json` file to resolve the names
 of sources and targets that you want to test.  For example, the SomeStudents factory
 would be written as follows if this were a dbt project:
 
