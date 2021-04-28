@@ -200,9 +200,12 @@ def read_sa_metadata(schema_path):
     }
     """
 
+    LOG.debug("Reading schema metadata from path %s", schema_path)
+
     metadata = sa.MetaData()
     schemas = {}
     for yaml_file in glob.glob(os.path.join(schema_path, "*.schema.yml")):
+        LOG.debug("Reading schema metadata from %s", yaml_file)
         yaml_basename = os.path.basename(yaml_file)
 
         parsed_filename = re.search(r"([^.]+).([^.]+).schema.yml", yaml_basename)
@@ -219,6 +222,7 @@ def read_sa_metadata(schema_path):
             table_name: _sa_table_from_yaml(metadata, namespace, table_name, table_def)
             for table_name, table_def in schema_def.items()
         }
+
     return schemas
 
 
