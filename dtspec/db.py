@@ -3,6 +3,8 @@ import glob
 import re
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
 
 import yaml
 import nest_asyncio
@@ -27,16 +29,36 @@ def generate_engine(**options):
             f"postgresql+psycopg2://{options['user']}:{options['password']}@{options['host']}:{options['port']}/{options['dbname']}"
         )
     if options["type"] == "snowflake":
+        connect_args = None
+        if "private_key_path" in options:
+            with open(options["private_key_path"], "rb") as key:
+                p_key = serialization.load_pem_private_key(
+                    key.read(),
+                    password=options["private_key_passphrase"].encode()
+                    if "private_key_passphrase" in options
+                    else None,
+                    backend=default_backend(),
+                )
+            pkb = p_key.private_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+
+            connect_args = {
+                "private_key": pkb,
+            }
         return sa.create_engine(
             snowflake.sqlalchemy.URL(
                 account=options["account"],
                 user=options["user"],
-                password=options["password"],
+                password=options["password"] if "password" in options else '',
                 database=options["database"],
                 schema="public",
                 warehouse=options["warehouse"],
                 role=options["role"],
-            )
+            ),
+            connect_args=connect_args,
         )
     raise UnknownEngineTypeError(f"Unsupported engine type: {options['type']}")
 
