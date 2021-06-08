@@ -57,6 +57,7 @@ def generate_engine(**options):
                 schema="public",
                 warehouse=options["warehouse"],
                 role=options["role"],
+                authenticator=options["authenticator"] if "authenticator" in options else None
             ),
             connect_args=connect_args,
         )
