@@ -51,7 +51,7 @@ def run_dbt(
     "Construct common dbt parameters and runs dbt in a shell"
 
     profiles_dir = profiles_dir or os.environ.get(
-        "DBT_PROFILES_DIR", "~/.dbt/profiles.yml"
+        "DBT_PROFILES_DIR", "~/.dbt/"
     )
 
     env = env or {}
