@@ -67,7 +67,7 @@ def generate_engine(**options):
     raise UnknownEngineTypeError(f"Unsupported engine type: {options['type']}")
 
 
-def execute_sqls(engine, sqls, max_workers=4):
+def execute_sqls(engine, sqls, max_workers=4, ignore_exceptions=False):
     """
     Used to run a list of sql commands distributed over a number of threads.
     This method splits sql into a number of batches (max_workers) and executes
@@ -81,7 +81,7 @@ def execute_sqls(engine, sqls, max_workers=4):
     """
 
     async def async_execute_sqls(
-        worker_execute_sqls, engine, sqls, max_workers=max_workers
+        worker_execute_sqls, engine, sqls, max_workers, ignore_exceptions
     ):
         worker_batch_sqls = [
             sqls[iworker::max_workers] for iworker in range(max_workers)
@@ -91,7 +91,7 @@ def execute_sqls(engine, sqls, max_workers=4):
             event_loop = asyncio.get_event_loop()
             tasks = [
                 event_loop.run_in_executor(
-                    executor, worker_execute_sqls, engine, worker_sqls
+                    executor, worker_execute_sqls, engine, worker_sqls, ignore_exceptions
                 )
                 for worker_sqls in worker_batch_sqls
             ]
@@ -99,16 +99,20 @@ def execute_sqls(engine, sqls, max_workers=4):
             for task in tasks:
                 await asyncio.gather(task)
 
-    def worker_execute_sqls(engine, worker_sqls):
+    def worker_execute_sqls(engine, worker_sqls, ignore_exceptions):
         with engine.connect().begin() as trans:
             for worker_sql in worker_sqls:
                 LOG.debug("Executing sql: %s", worker_sql)
-                trans.connection.execute(worker_sql)
+                try:
+                    trans.connection.execute(worker_sql)
+                except sa.exc.SQLAlchemyError as e:
+                    if not ignore_exceptions:
+                        raise e
             trans.commit()
 
     nest_asyncio.apply()
     asyncio.get_event_loop().run_until_complete(
-        async_execute_sqls(worker_execute_sqls, engine, sqls)
+        async_execute_sqls(worker_execute_sqls, engine, sqls, max_workers, ignore_exceptions)
     )
 
 
@@ -313,6 +317,13 @@ def clean_target_test_data(engine, api):
     execute_sqls(
         engine,
         [f"DROP TABLE IF EXISTS {target}" for target in api.spec["targets"].keys()],
+        ignore_exceptions=True
+    )
+
+    execute_sqls(
+        engine,
+        [f"DROP View IF EXISTS {target}" for target in api.spec["targets"].keys()],
+        ignore_exceptions=True
     )
 
 
