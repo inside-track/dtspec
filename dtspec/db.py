@@ -30,12 +30,13 @@ def generate_engine(**options):
         )
     if options["type"] == "snowflake":
         connect_args = None
-        if "private_key_path" in options:
+        if "private_key_path" in options and options["private_key_path"]:
             with open(options["private_key_path"], "rb") as key:
                 p_key = serialization.load_pem_private_key(
                     key.read(),
                     password=options["private_key_passphrase"].encode()
                     if "private_key_passphrase" in options
+                    and options["private_key_passphrase"]
                     else None,
                     backend=default_backend(),
                 )
@@ -52,11 +53,14 @@ def generate_engine(**options):
             snowflake.sqlalchemy.URL(
                 account=options["account"],
                 user=options["user"],
-                password=options["password"] if "password" in options else '',
+                password=options["password"] if "password" in options else "",
                 database=options["database"],
                 schema="public",
                 warehouse=options["warehouse"],
                 role=options["role"],
+                authenticator=options["authenticator"]
+                if "authenticator" in options and options["authenticator"]
+                else None,
             ),
             connect_args=connect_args,
         )
