@@ -304,16 +304,33 @@ def init_test_db(env, engine, schemas_path, clean=False):
 
 def clean_target_test_data(engine, api):
     "Removes target data from the test database that might be left over from a previous test run"
+    insp = reflection.Inspector.from_engine(engine)
 
     namespaces = {target.split(".")[1] for target in api.spec["targets"].keys()}
-    execute_sqls(
-        engine, [f"CREATE SCHEMA IF NOT EXISTS {namespace}" for namespace in namespaces]
-    )
+    for namespace in namespaces:
+        tables = engine.table_names(schema=namespace)
+        LOG.debug("Found existing tables: %s", tables)
 
-    execute_sqls(
-        engine,
-        [f"DROP TABLE IF EXISTS {target}" for target in api.spec["targets"].keys()],
-    )
+        views = list(insp.get_view_names(schema=namespace))
+        LOG.debug("Found existing views: %s", views)
+
+        execute_sqls(engine, [f"CREATE SCHEMA IF NOT EXISTS {namespace}"])
+
+        targets = api.spec["targets"].keys()
+        target_tables = [
+            target for target in targets if target.split(".")[-1] in tables
+        ]
+        target_views = [target for target in targets if target.split(".")[-1] in views]
+
+        execute_sqls(
+            engine,
+            [f"DROP TABLE IF EXISTS {target}" for target in target_tables],
+        )
+
+        execute_sqls(
+            engine,
+            [f"DROP VIEW IF EXISTS {target}" for target in target_views],
+        )
 
 
 def serialize(data):
