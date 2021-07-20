@@ -1,5 +1,13 @@
 # dtspec Changelog
 
+## 0.7.2
+
+* Resolve confusing `project_dir` that should have been `profile_dir` CLI argument (@mdesmit)
+* Instead of raising an error, will drop targets that are modeled as views
+* Support for snowflake private key authentication (@mdesmit)
+* CLI Integration tests using dbt-container-skeleton project
+* Using github actions for CI
+
 ## 0.7.0
 
 * New `dtspec` cli command that helps with setting up test environments and running against dbt projects.
