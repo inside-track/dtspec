@@ -40,7 +40,7 @@ class DbtRunError(Exception):
 
 def run_dbt(
     cmd="run",
-    project_dir=None,
+    profiles_dir=None,
     target="dev",
     models=None,
     exclude=None,
@@ -50,8 +50,8 @@ def run_dbt(
 ):
     "Construct common dbt parameters and runs dbt in a shell"
 
-    project_dir = project_dir or os.environ.get(
-        "DBT_PROFILES_DIR", "~/.dbt/profiles.yml"
+    profiles_dir = profiles_dir or os.environ.get(
+        "DBT_PROFILES_DIR", "~/.dbt/"
     )
 
     env = env or {}
@@ -72,7 +72,7 @@ def run_dbt(
     if partial_parse:
         partial_parse_cmd = "--partial-parse"
 
-    shell_cmd = f"dbt {partial_parse_cmd} {cmd} --project-dir={project_dir} --target={target} {full_refresh_cmd} {models_cmd} {exclude_cmd}"
+    shell_cmd = f"dbt {partial_parse_cmd} {cmd} --profiles-dir={profiles_dir} --target={target} {full_refresh_cmd} {models_cmd} {exclude_cmd}"
     LOG.info("Running dbt via: %s", shell_cmd)
 
     try:
