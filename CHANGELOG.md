@@ -1,5 +1,11 @@
 # dtspec Changelog
 
+## 0.7.3
+
+* Resolves issue with Snowflake authentication options when using username/password
+* Creates test target schema if not exists prior to checking for table/view existence
+* Serialize special SQLAlchemy values prior to loading
+
 ## 0.7.2
 
 * Resolve confusing `project_dir` that should have been `profile_dir` CLI argument (@mdesmit)
