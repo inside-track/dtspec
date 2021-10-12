@@ -29,7 +29,7 @@ def generate_engine(**options):
             f"postgresql+psycopg2://{options['user']}:{options['password']}@{options['host']}:{options['port']}/{options['dbname']}"
         )
     if options["type"] == "snowflake":
-        connect_args = None
+        connect_args = {}
         if "private_key_path" in options and options["private_key_path"]:
             with open(options["private_key_path"], "rb") as key:
                 p_key = serialization.load_pem_private_key(
@@ -60,7 +60,7 @@ def generate_engine(**options):
                 role=options["role"],
                 authenticator=options["authenticator"]
                 if "authenticator" in options and options["authenticator"]
-                else None,
+                else "",
             ),
             connect_args=connect_args,
         )
@@ -308,13 +308,13 @@ def clean_target_test_data(engine, api):
 
     namespaces = {target.split(".")[1] for target in api.spec["targets"].keys()}
     for namespace in namespaces:
+        execute_sqls(engine, [f"CREATE SCHEMA IF NOT EXISTS {namespace}"])
+
         tables = engine.table_names(schema=namespace)
         LOG.debug("Found existing tables: %s", tables)
 
         views = list(insp.get_view_names(schema=namespace))
         LOG.debug("Found existing views: %s", views)
-
-        execute_sqls(engine, [f"CREATE SCHEMA IF NOT EXISTS {namespace}"])
 
         targets = api.spec["targets"].keys()
         target_tables = [
@@ -333,17 +333,17 @@ def clean_target_test_data(engine, api):
         )
 
 
-def serialize(data):
-    "Converts data specified in a dtspec yaml table and serializes it prior to loading into a test database"
+def sa_serialize(data):
+    "Converts data specified in a dtspec yaml table and serializes it prior to loading via sqlalchemy"
 
     serialized_data = []
     for row in data:
         serialized_row = {}
         for k, v in row.items():
             if v == "{True}":
-                serialized_row[k] = "True"
+                serialized_row[k] = True
             elif v == "{False}":
-                serialized_row[k] = "False"
+                serialized_row[k] = False
             else:
                 serialized_row[k] = v
 
@@ -376,6 +376,7 @@ def load_test_data(source_engines, api, schemas_path):
     truncate_by_env_sqls = {env: [] for env in source_engines.keys()}
     insert_by_env_sqls = {env: [] for env in source_engines.keys()}
     for source_name, data in api.spec["sources"].items():
+
         try:
             this_source_meta = source_fqn_to_sa[source_name]
         except KeyError as err:
@@ -385,7 +386,7 @@ def load_test_data(source_engines, api, schemas_path):
         source_insert = (
             this_source_meta["sa_table"]
             .insert(bind=this_source_meta["engine"])
-            .values(data.serialize())
+            .values(sa_serialize(data.serialize()))
         )
 
         truncate_by_env_sqls[this_source_meta["env"]].append(
