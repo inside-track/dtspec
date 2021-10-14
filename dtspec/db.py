@@ -274,12 +274,12 @@ def _create_table_sql(table, engine):
     return str(sa.schema.CreateTable(table).compile(engine)) + ";"
 
 
-def _create_namespace_sql(namespace, clean=False):
-    sql = ""
-    if clean:
-        sql += f"DROP SCHEMA IF EXISTS {namespace} CASCADE; "
-    sql += f"CREATE SCHEMA {namespace}; "
-    return sql
+def _clean_namespace_sql(namespace):
+    return f"DROP SCHEMA IF EXISTS {namespace} CASCADE;"
+
+
+def _create_namespace_sql(namespace):
+    return f"CREATE SCHEMA IF NOT EXISTS {namespace};"
 
 
 def init_test_db(env, engine, schemas_path, clean=False):
@@ -287,9 +287,12 @@ def init_test_db(env, engine, schemas_path, clean=False):
 
     schema_metadata = read_sa_metadata(schemas_path)[env]
 
+    clean_schema_sqls = [
+        _clean_namespace_sql(namespace) for namespace in schema_metadata.keys() if clean
+    ]
+
     create_schema_sqls = [
-        _create_namespace_sql(namespace, clean=clean)
-        for namespace in schema_metadata.keys()
+        _create_namespace_sql(namespace) for namespace in schema_metadata.keys()
     ]
 
     create_table_sqls = [
@@ -298,6 +301,7 @@ def init_test_db(env, engine, schemas_path, clean=False):
         for table_name, table in tables.items()
     ]
 
+    execute_sqls(engine, clean_schema_sqls)
     execute_sqls(engine, create_schema_sqls)
     execute_sqls(engine, create_table_sqls)
 
