@@ -1,5 +1,10 @@
 # dtspec Changelog
 
+## 0.7.4
+
+* Resolve issue with cleaning up databases with Snowflake.
+* Allows dtspec to compile dbt snapshots as valid refs
+
 ## 0.7.3
 
 * Resolves issue with Snowflake authentication options when using username/password
