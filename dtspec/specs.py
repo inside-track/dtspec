@@ -128,4 +128,13 @@ def compile_dbt_manifest(dbt_manifest):
             for _key, value in dbt_manifest["nodes"].items()
             if value["resource_type"] == "model"
         },
+        **{
+            value["name"]: {
+                "database": value["database"],
+                "schema": value["schema"],
+                "name": value["alias"],
+            }
+            for _key, value in dbt_manifest["nodes"].items()
+            if value["resource_type"] == "snapshot"
+        },
     }
