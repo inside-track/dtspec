@@ -397,7 +397,8 @@ def load_test_data(source_engines, api, schemas_path):
             f"TRUNCATE {source_name}; "
         )
 
-        insert_by_env_sqls[this_source_meta["env"]].append(source_insert)
+        if len(data.serialize()) > 0:
+            insert_by_env_sqls[this_source_meta["env"]].append(source_insert)
 
     for env, source_engine in source_engines.items():
         LOG.info("Loading test data into source test environment %s", env)
