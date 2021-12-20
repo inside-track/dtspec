@@ -1,3 +1,6 @@
+Note: Maintenance of this project has moved to [gnilrets/dtspec](https://github.com/gnilrets/dtspec)
+
+
 # Data Transform Spec
 
 dtspec is an API for specifying and testing data transformations.
