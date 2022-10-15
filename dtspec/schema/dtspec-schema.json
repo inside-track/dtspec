@@ -1,0 +1,361 @@
+{
+  "$id": "https://schema.insidetrack.org/dtspec/0.1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "JSON Schema for dtspec test scenario definitions",
+  "title": "DtspecSchema",
+  "additionalProperties": false,
+  "type": "object",
+  "definitions": {
+    "identifier_map": {
+      "type": "array",
+      "description": "Mapping of identifiers to table columns",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "column",
+          "identifier"
+        ],
+        "properties": {
+          "column": {
+            "type": "string",
+            "description": "Name of the table column the identifier will be mapped to"
+          },
+          "identifier": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "The identifier being mapped to the table",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Name of the identifier to map to that column"
+              },
+              "attribute": {
+                "type": "string",
+                "description": "The identifiers attribute that refers to the generator to use (e.g. integer or string)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "data": {
+      "type": "array",
+      "description": "The input data that will be inserted into each source table before the test run",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source",
+          "table"
+        ],
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Name of a source defined in the sources list where the data should be inserted."
+          },
+          "table": {
+            "type": "string",
+            "description": "Input data formatted as markdown table"
+          }
+        }
+      }
+    }
+  },
+  "properties": {
+    "version": {
+      "enum": [
+        "0.1"
+      ],
+      "description": "dtspec specification schema version"
+    },
+    "description": {
+      "type": "string",
+      "description": "Short text describing the purpose of the test scenario"
+    },
+    "identifiers": {
+      "type": "array",
+      "description": "List of available identifiers. Each identifier can define multiple generators, e.g. to generate both a string and an integer that refer to the same entity.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "identifier",
+          "attributes"
+        ],
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "description": "An identifier tells dtspec which columns should be used to identify a record as belonging to a case"
+          },
+          "attributes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "field",
+                "generator"
+              ],
+              "properties": {
+                "field": {
+                  "type": "string",
+                  "description": "The field of an identifier is used to later link the generator to a source and target table column."
+                },
+                "generator": {
+                  "enum": [
+                    "unique_integer",
+                    "unique_string"
+                  ],
+                  "description": "Defines if the generator produces either integer or string values"
+                },
+                "prefix": {
+                  "type": "string",
+                  "description": "Optional argument for unique_string can help troubleshoot testing issues"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "description": "Declares the source tables available in the test scenarios and optionally defines the mapping of identifiers to table columns.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source"
+        ],
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "The name of the source table"
+          },
+          "description": {
+            "type": "string",
+            "description": "Short note describing the source."
+          },
+          "identifier_map": {
+            "$ref": "#/definitions/identifier_map"
+          },
+          "defaults": {
+            "type": "array",
+            "description": "Source columns can be given defaults. This can be useful when a source field shouldn't be blank and needs some sensible default.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "column",
+                "value"
+              ],
+              "properties": {
+                "column": {
+                  "type": "string",
+                  "description": "Name of the column the default should be set for"
+                },
+                "value": {
+                  "type": "string",
+                  "description": "The default value to set"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "targets": {
+      "type": "array",
+      "description": "Declares the target tables available in the test scenarios and optionally defines the mapping of identifiers to table columns.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "target"
+        ],
+        "properties": {
+          "target": {
+            "type": "string",
+            "description": "The name of the target table"
+          },
+          "description": {
+            "type": "string",
+            "description": "Short note describing the target."
+          },
+          "identifier_map": {
+            "$ref": "#/definitions/identifier_map"
+          }
+        }
+      }
+    },
+    "factories": {
+      "type": "array",
+      "description": "Declares the target tables available in the test scenarios and optionally defines the mapping of identifiers to table columns.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "factory",
+          "data"
+        ],
+        "properties": {
+          "factory": {
+            "type": "string",
+            "description": "The name of the factory"
+          },
+          "description": {
+            "type": "string",
+            "description": "Short note describing the factory."
+          },
+          "data": {
+            "$ref": "#/definitions/data"
+          },
+          "parents": {
+            "type": "array",
+            "description": "List of parent factories. Allows to add additional data definitions from another factory specification to this factory.",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "description": "The list of test scenario definitions. Scenarios are collections of cases that share some common data factory or describe similar situations.",
+      "items": {
+        "type": "object",
+        "description": "A scenario definition with multiple test cases and optional references to factories.",
+        "additionalProperties": false,
+        "required": [
+          "scenario",
+          "cases"
+        ],
+        "properties": {
+          "scenario": {
+            "type": "string",
+            "description": "Name of the test scenario"
+          },
+          "description": {
+            "type": "string",
+            "description": "A short description of the test scenario"
+          },
+          "factory": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "parents"
+            ],
+            "properties": {
+              "parents": {
+                "type": "array",
+                "description": "List of factory names (defined under 'factories') that should be used to generate source data.",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "cases": {
+            "type": "array",
+            "description": "A scenario can contain multiple test cases. The cases are stacked, so the user can load this stacked data into their data transformation system once, runs the data transformations once, and then collects the resulting output once.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "case",
+                "expected"
+              ],
+              "properties": {
+                "case": {
+                  "type": "string",
+                  "description": "Name of the test case"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Short description of the purpose of the test case"
+                },
+                "factory": {
+                  "type": "object",
+                  "description": "Test data generated for this specific case.",
+                  "additionalProperties": false,
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/definitions/data"
+                    }
+                  }
+                },
+                "expected": {
+                  "type": "object",
+                  "description": "The expected output data.",
+                  "additionalProperties": false,
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "description": "List of target tables that should be validated after the test run.",
+                      "items": {
+                        "type": "object",
+                        "description": "",
+                        "additionalProperties": false,
+                        "required": [
+                          "target",
+                          "table"
+                        ],
+                        "properties": {
+                          "target": {
+                            "type": "string",
+                            "description": "Name of the target table."
+                          },
+                          "table": {
+                            "type": "string",
+                            "description": "The expected output data after the test run as markdown formatted table."
+                          },
+                          "by": {
+                            "type": "array",
+                            "description": "List of column names to order the expected and actual output by to ensure a defined order for the comparison.",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "values": {
+                            "type": "array",
+                            "description": "Mapping of constant values to columns that are expected in every row",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "column",
+                                "value"
+                              ],
+                              "properties": {
+                                "column": {
+                                  "type": "string",
+                                  "description": "Table column name where the value is expected."
+                                },
+                                "value": {
+                                  "type": "string",
+                                  "description": "The value expected in every row of that column."
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
