@@ -23,7 +23,7 @@ def serialize_actuals(actuals):
     "Converts Pandas dataframe results into form needed to load dtspec api actuals"
 
     def stringify_pd(df):
-        nulls_df = df.applymap(lambda v: v is None)
+        nulls_df = df.map(lambda v: v is None)
         str_df = df.astype({column: str for column in df.columns})
 
         def replace_nulls(series1, series2):

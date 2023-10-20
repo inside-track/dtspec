@@ -8,7 +8,6 @@ def test(ctx):
 
 @task
 def lint_black(ctx, check=False):
-
     ctx.run(f"black {'--check' if check else ''} tasks.py")
     ctx.run(f"black {'--check' if check else ''} dtspec")
     ctx.run(f"black {'--check' if check else ''} tests")

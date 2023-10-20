@@ -1,5 +1,9 @@
 # dtspec Changelog
 
+## 0.7.6
+
+* dependencies version bumps
+
 ## 0.7.5
 
 * Resolves an issue loading Snowflake with empty data

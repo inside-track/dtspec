@@ -9,7 +9,11 @@ from dtspec.core import Identifier, Factory, Source, Target, Scenario, Case
 from dtspec.expectations import DataExpectation
 
 
-with open(os.path.dirname(os.path.realpath(__file__)) + "/schema/dtspec-schema.json", "r") as stream:
+with open(
+    os.path.dirname(os.path.realpath(__file__)) + "/schema/dtspec-schema.json",
+    "r",
+    encoding="utf-8",
+) as stream:
     SCHEMA = yaml.safe_load(stream)
 
 
@@ -351,9 +355,8 @@ class Api:
         Converts the user specs into a markdown representation that can be used for documentation
         """
 
-        indent = lambda n, text: "\n".join(
-            [" " * n + line for line in text.split("\n")]
-        )
+        def indent(n, text):
+            return "\n".join([" " * n + line for line in text.split("\n")])
 
         doc = []
         doc.append("# Data Transform Spec\n")

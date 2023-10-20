@@ -97,7 +97,7 @@ def realistic_transformer(
 
 @pytest.fixture
 def spec():
-    return yaml.safe_load(open("tests/realistic.yml"))
+    return yaml.safe_load(open("tests/realistic.yml", encoding="utf-8"))
 
 
 @pytest.fixture
@@ -199,7 +199,7 @@ def test_failing_expectation(api, sources_data):
 
 
 def test_hello_world_spec():
-    spec = yaml.safe_load(open("tests/hello_world.yml"))
+    spec = yaml.safe_load(open("tests/hello_world.yml", encoding="utf-8"))
     api = dtspec.api.Api(spec)
     api.generate_sources()
 
@@ -212,7 +212,9 @@ def test_hello_world_spec():
 
 
 def test_hello_world_multiple_cases_spec():
-    spec = yaml.safe_load(open("tests/hello_world_multiple_cases.yml"))
+    spec = yaml.safe_load(
+        open("tests/hello_world_multiple_cases.yml", encoding="utf-8")
+    )
     api = dtspec.api.Api(spec)
     api.generate_sources()
 

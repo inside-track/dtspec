@@ -1,1 +1,1 @@
-import dtspec.api as api
+from dtspec import api

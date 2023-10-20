@@ -14,7 +14,7 @@ from dtspec.expectations import DataExpectation
 
 @pytest.fixture
 def spec():
-    return yaml.safe_load(open("tests/realistic.yml"))
+    return yaml.safe_load(open("tests/realistic.yml", encoding="utf-8"))
 
 
 @pytest.fixture

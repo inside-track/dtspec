@@ -52,7 +52,6 @@ def test_ignores_trailing_comments():
 
 
 def test_honors_embedded_octothorpes():
-
     given = """
         | id | name  |
         | -  | -     |

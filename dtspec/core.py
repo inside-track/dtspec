@@ -42,9 +42,7 @@ def _clean_markdown(markdown):
     # Remove header separator
     header_separator = cleaned.pop(1)
     if re.search(re.compile(r"^[\s\-\|]*$"), header_separator) is None:
-        raise InvalidHeaderSeparatorError(
-            "Bad header separator: {}".format(header_separator)
-        )
+        raise InvalidHeaderSeparatorError(f"Bad header separator: {header_separator}")
 
     # Unsplit
     cleaned = "\n".join(cleaned)
@@ -99,7 +97,7 @@ def translate_embedded_identifiers(df, case, identifiers, identifier_regex=None)
 
         return v
 
-    return df.applymap(translate_id)
+    return df.map(translate_id)
 
 
 class UniqueIdGenerator:  # pylint: disable=too-few-public-methods
@@ -125,7 +123,7 @@ class UniqueIdGenerator:  # pylint: disable=too-few-public-methods
         self.gen_sample()
 
     def gen_sample(self):
-        self.sample = list(range(10 ** (self.size - 1), 10 ** self.size))
+        self.sample = list(range(10 ** (self.size - 1), 10**self.size))
         random.shuffle(self.sample)
         self.size += 1
 
@@ -148,7 +146,7 @@ class IdGenerators:
 
     @staticmethod
     def unique_string(prefix=""):
-        return UniqueIdGenerator(lambda i: "{}{}".format(prefix, i))
+        return UniqueIdGenerator(lambda i: f"{prefix}{i}")
 
     @staticmethod
     def uuid():
@@ -291,7 +289,7 @@ class Source:
 
     @staticmethod
     def _special_values(df):
-        return df.applymap(lambda v: None if v == NULL_TOKEN else v)
+        return df.map(lambda v: None if v == NULL_TOKEN else v)
 
     def serialize(self, orient="records"):
         return json.loads(self.data.to_json(orient=orient))
@@ -352,7 +350,7 @@ class Target:
         self._translate_column_identifiers()
 
     def _translate_special_values(self):
-        self.data = self.data.applymap(lambda v: NULL_TOKEN if v is None else v)
+        self.data = self.data.map(lambda v: NULL_TOKEN if v is None else v)
 
     def _translate_column_identifiers(self):
         for column, mapto in self.id_mapping.items():

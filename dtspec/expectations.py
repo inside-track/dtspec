@@ -12,8 +12,8 @@ def assert_frame_equal(actual, expected, **kwargs):
         pandas.testing.assert_frame_equal(actual, expected, **kwargs)
     except AssertionError as err:
         msg = str(err)
-        msg += "\nActual:\n{}".format(actual)
-        msg += "\nExpected:\n{}".format(expected)
+        msg += f"\nActual:\n{actual}"
+        msg += f"\nExpected:\n{expected}"
         raise AssertionError(msg) from err
 
 

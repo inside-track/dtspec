@@ -203,7 +203,9 @@ def main_test_dbt(args, config):
     if not args.partial_parse:
         dtspec.shell.run_dbt("compile", target=args.target)
 
-    with open(os.path.join(DBT_ROOT, "target", "manifest.json")) as mfile:
+    with open(
+        os.path.join(DBT_ROOT, "target", "manifest.json"), encoding="utf-8"
+    ) as mfile:
         dbt_manifest = json.loads(mfile.read())
     manifest = dtspec.specs.compile_dbt_manifest(dbt_manifest)
 
@@ -317,7 +319,9 @@ def compile_dtspec(scenario_selector=None, case_selector=None, manifest=None):
         manifest=manifest,
     )
 
-    with open(os.path.join(DTSPEC_ROOT, "compiled_specs.yml"), "w") as compiled_file:
+    with open(
+        os.path.join(DTSPEC_ROOT, "compiled_specs.yml"), "w", encoding="utf-8"
+    ) as compiled_file:
         compiled_file.write(yaml.dump(compiled_spec, default_flow_style=False))
 
     return compiled_spec

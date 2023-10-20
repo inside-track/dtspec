@@ -70,7 +70,7 @@ def compile_spec(
 
 def _collect_files(search_path):
     spec_templates = []
-    for (dirpath, _dirnames, filenames) in os.walk(search_path):
+    for dirpath, _dirnames, filenames in os.walk(search_path):
         for filename in filenames:
             if not filename.endswith(".yml") or filename in "main.yml":
                 continue

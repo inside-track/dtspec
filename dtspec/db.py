@@ -193,7 +193,7 @@ def _write_yaml(output_path, env, namespace, metadata):
     schema_yaml = _schema_yaml(metadata)
 
     yaml_file = os.path.join(output_path, f"{env}.{namespace}.schema.yml")
-    with open(yaml_file, "w") as yfile:
+    with open(yaml_file, "w", encoding="utf-8") as yfile:
         yfile.write(
             "\n".join(
                 [
@@ -239,7 +239,7 @@ def read_sa_metadata(schema_path):
         namespace = parsed_filename.group(2)
         schemas[env] = schemas.get(env, {})
 
-        with open(yaml_file, "r") as yfile:
+        with open(yaml_file, "r", encoding="utf-8") as yfile:
             yaml_txt = yfile.read()
 
         schema_def = yaml.unsafe_load(yaml_txt)
@@ -380,7 +380,6 @@ def load_test_data(source_engines, api, schemas_path):
     truncate_by_env_sqls = {env: [] for env in source_engines.keys()}
     insert_by_env_sqls = {env: [] for env in source_engines.keys()}
     for source_name, data in api.spec["sources"].items():
-
         try:
             this_source_meta = source_fqn_to_sa[source_name]
         except KeyError as err:
